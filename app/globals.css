@@ -385,6 +385,15 @@
   animation: var(--animate-shimmer);
 }
 
+/* Hide native scrollbars on snap-scroll carousels — used on the dashboard's
+   "Today's top picks" so the gradient edge-fades aren't broken by a scrollbar.
+   Track / thumb still scrollable via mouse, trackpad, and keyboard. */
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
 /* ========================================
    AURORA GRADIENT MESH (background-fx)
    ======================================== */
