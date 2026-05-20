@@ -67,6 +67,31 @@ export function GlobalShortcuts() {
 
       const key = e.key;
 
+      // The /compare page owns A / V / E for its own shortcuts (add product,
+      // regenerate verdict, export). Skip the global handlers for those keys
+      // there so they don't double-fire (e.g. V → /vault while the user is
+      // trying to regenerate a verdict).
+      if (pathname.startsWith("/compare")) {
+        const k = key.toLowerCase();
+        if (k === "a" || k === "v" || k === "e") return;
+      }
+      // The /insights page owns R / T / E for regenerate brief, cycle period,
+      // and export. Skip the matching globals there.
+      if (pathname.startsWith("/insights")) {
+        const k = key.toLowerCase();
+        if (k === "r" || k === "t" || k === "e") return;
+      }
+      // The /dashboard page owns B (regenerate briefing), N (next move),
+      // and 1-5 (jump to section) for its cinematic redesign. Skip the
+      // matching globals so they don't double-fire.
+      if (pathname.startsWith("/dashboard")) {
+        const k = key.toLowerCase();
+        if (k === "b" || k === "n") return;
+        if (["1", "2", "3", "4", "5"].includes(key)) return;
+        // Space scrolls past the first fold — also belongs to the dashboard.
+        if (e.key === " " || e.key === "Spacebar") return;
+      }
+
       if (key === "?") {
         e.preventDefault();
         setShortcutsOpen((o) => !o);

@@ -93,18 +93,44 @@ async function handle(
 
   // Cache check — unless regenerate flag is on.
   if (!opts.regenerate) {
-    const { data: cachedRow } = await supabase
+    // Try wide select (editorial columns) first; if the migration isn't
+    // applied yet, fall back to the base shape.
+    type CacheRow = Pick<BriefingRow, "paragraphs" | "chips" | "date"> & {
+      editorial_title?: string | null;
+      opening_hook?: string | null;
+      sub_headline?: string | null;
+      recommendation?: unknown;
+    };
+    let cachedRow: CacheRow | null = null;
+    const wide = await supabase
       .from("daily_briefings")
-      .select("paragraphs, chips, date")
+      .select(
+        "paragraphs, chips, date, editorial_title, opening_hook, sub_headline, recommendation",
+      )
       .eq("user_id", user.id)
       .eq("date", date)
       .maybeSingle();
+    if (wide.error) {
+      const narrow = await supabase
+        .from("daily_briefings")
+        .select("paragraphs, chips, date")
+        .eq("user_id", user.id)
+        .eq("date", date)
+        .maybeSingle();
+      cachedRow = (narrow.data as unknown as CacheRow | null) ?? null;
+    } else {
+      cachedRow = (wide.data as unknown as CacheRow | null) ?? null;
+    }
 
     if (cachedRow) {
-      const cached = cachedRow as Pick<BriefingRow, "paragraphs" | "chips" | "date">;
+      const row: CacheRow = cachedRow;
       const parsed = dailyBriefingSchema.safeParse({
-        paragraphs: cached.paragraphs,
-        chips: cached.chips,
+        paragraphs: row.paragraphs,
+        chips: row.chips,
+        editorialTitle: row.editorial_title ?? undefined,
+        openingHook: row.opening_hook ?? undefined,
+        subHeadline: row.sub_headline ?? undefined,
+        recommendation: row.recommendation ?? undefined,
       });
       if (parsed.success) {
         const payload: ResponsePayload = {
@@ -154,13 +180,30 @@ async function handle(
   // Cache it — only when we got real (non-fallback) content, otherwise we'd
   // serve the templated copy all day.
   if (!fellBack) {
+    // Best-effort persist. Migration 008 adds the editorial columns; if it
+    // hasn't run yet, the first insert errors with PGRST204 (column not
+    // found) and we retry with the base shape so caching still works.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("daily_briefings") as any).insert({
+    const withEditorial = await (supabase.from("daily_briefings") as any).insert({
       user_id: user.id,
       date,
       paragraphs: briefing.paragraphs,
       chips: briefing.chips,
+      editorial_title: briefing.editorialTitle ?? null,
+      opening_hook: briefing.openingHook ?? null,
+      sub_headline: briefing.subHeadline ?? null,
+      recommendation: briefing.recommendation ?? null,
     });
+    if (withEditorial.error) {
+      // Fallback insert without the editorial extensions.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("daily_briefings") as any).insert({
+        user_id: user.id,
+        date,
+        paragraphs: briefing.paragraphs,
+        chips: briefing.chips,
+      });
+    }
   }
 
   const payload: ResponsePayload = { briefing, cached: false, fellBack, date };

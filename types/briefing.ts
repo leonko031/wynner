@@ -22,9 +22,30 @@ export const briefingChipSchema = z.object({
 });
 export type BriefingChip = z.infer<typeof briefingChipSchema>;
 
+/**
+ * Editorial recommendation — the "next move" card at the bottom of the
+ * dashboard. Generated alongside the briefing so we use the same cache key.
+ */
+export const editorialRecommendationSchema = z.object({
+  /** Magazine-headline-style line (e.g. "Try a Standard scan on Germany wellness"). */
+  headline: z.string().min(8).max(140),
+  /** 1-paragraph rationale, ~3 sentences. */
+  rationale: z.string().min(20).max(600),
+  /** Action type — drives the visual on the right of the card. */
+  actionType: z.enum(["scan", "deepResearch", "compare", "vault"]),
+  /** Free-form context for the visual (niche/country/products etc.). */
+  actionContext: z.string().max(160).optional(),
+});
+export type EditorialRecommendation = z.infer<typeof editorialRecommendationSchema>;
+
 export const dailyBriefingSchema = z.object({
   paragraphs: z.array(z.string().min(10).max(600)).length(3),
   chips: z.array(briefingChipSchema).length(3),
+  /** Editorial extensions used by the cinematic dashboard. Optional for back-compat. */
+  editorialTitle: z.string().min(4).max(80).optional(),
+  openingHook: z.string().min(8).max(160).optional(),
+  subHeadline: z.string().min(8).max(160).optional(),
+  recommendation: editorialRecommendationSchema.optional(),
 });
 export type DailyBriefing = z.infer<typeof dailyBriefingSchema>;
 
@@ -51,5 +72,15 @@ export function fallbackBriefing(firstName: string): DailyBriefing {
       { label: "Browse vault", emoji: "📚", action: "open_vault" },
       { label: "Steady market", emoji: "🌤️", action: "info" },
     ],
+    editorialTitle: "A quiet morning to scan",
+    openingHook: "A steady market — the right kind of day to be deliberate.",
+    subHeadline: "Generated for you in the last 24 hours",
+    recommendation: {
+      headline: "Score one product you've been sitting on",
+      rationale:
+        "Your strongest signal right now is the one you haven't tested yet. A single Standard scan beats hours of scrolling for inspiration.",
+      actionType: "scan",
+      actionContext: "standard",
+    },
   };
 }

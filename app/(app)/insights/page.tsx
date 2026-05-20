@@ -1,509 +1,689 @@
 "use client";
 
-import { useMemo } from "react";
-import {
-  Area,
-  AreaChart,
-  Cell,
-  Pie,
-  PieChart,
-  Tooltip as RTooltip,
-  XAxis,
-  YAxis,
-  type TooltipProps,
-} from "recharts";
-import { format } from "date-fns";
-import {
-  Activity,
-  Crown,
-  Flame,
-  Globe2,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
-import { ScoreNumber } from "@/components/animated/score-number";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { useUser } from "@/lib/auth/use-user";
 import { useProductStore } from "@/lib/store/products";
+import { useProductStatusStore } from "@/lib/store/product-status";
+import { useCreditsStore } from "@/lib/store/credits";
 import { NICHES } from "@/lib/data/niches";
 import { COUNTRIES } from "@/lib/data/countries";
-import { useIsClient } from "@/lib/hooks";
-import { getVerdictDistribution } from "@/lib/data/chart-helpers";
-import type { Product, Niche } from "@/types";
-import { cn } from "@/lib/utils";
-
-function dayKey(iso: string): string {
-  return iso.slice(0, 10); // YYYY-MM-DD
-}
-
-function buildScoreOverTime(products: Product[]): { day: string; avg: number; n: number }[] {
-  // Group by createdAt day; running avg per day
-  const byDay = new Map<string, number[]>();
-  for (const p of products) {
-    const k = dayKey(p.createdAt);
-    const arr = byDay.get(k) ?? [];
-    arr.push(p.sellScore);
-    byDay.set(k, arr);
-  }
-  const sortedDays = Array.from(byDay.keys()).sort();
-  return sortedDays.map((d) => {
-    const arr = byDay.get(d) ?? [];
-    return {
-      day: d,
-      avg: Math.round(arr.reduce((s, n) => s + n, 0) / arr.length),
-      n: arr.length,
-    };
-  });
-}
-
-function bestByGroup<T extends string>(
-  products: Product[],
-  pick: (p: Product) => T,
-  label: (key: T) => string,
-): { key: T; label: string; avg: number; count: number } | null {
-  const groups = new Map<T, number[]>();
-  for (const p of products) {
-    const k = pick(p);
-    const arr = groups.get(k) ?? [];
-    arr.push(p.sellScore);
-    groups.set(k, arr);
-  }
-  let best: { key: T; label: string; avg: number; count: number } | null = null;
-  for (const [k, arr] of groups) {
-    if (arr.length < 1) continue;
-    const avg = arr.reduce((s, n) => s + n, 0) / arr.length;
-    if (!best || avg > best.avg) {
-      best = { key: k, label: label(k), avg: Math.round(avg), count: arr.length };
-    }
-  }
-  return best;
-}
-
-function buildHeatmap(products: Product[]): { date: string; count: number }[] {
-  // 12-week (84 day) heatmap ending today.
-  const today = new Date();
-  const days: { date: string; count: number }[] = [];
-  for (let i = 83; i >= 0; i--) {
-    const d = new Date(today);
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - i);
-    days.push({ date: d.toISOString().slice(0, 10), count: 0 });
-  }
-  const map = new Map(days.map((d) => [d.date, d]));
-  for (const p of products) {
-    const cell = map.get(dayKey(p.createdAt));
-    if (cell) cell.count += 1;
-  }
-  return days;
-}
-
-function heatColor(n: number): string {
-  if (n === 0) return "#16161A";
-  if (n <= 1) return "rgba(0, 210, 106, 0.25)";
-  if (n <= 3) return "rgba(0, 210, 106, 0.5)";
-  if (n <= 6) return "rgba(0, 210, 106, 0.75)";
-  return "#00D26A";
-}
-
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  if (!active || !payload || payload.length === 0) return null;
-  return (
-    <div className="rounded-md border border-border-strong bg-surface-elevated/95 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur-sm">
-      {label !== undefined && (
-        <div className="mb-0.5 text-text-muted">{String(label)}</div>
-      )}
-      {payload.map((entry, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="font-mono tabular-nums text-text">
-            {entry.value}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
+import {
+  actionRate as computeActionRate,
+  buildAggregates,
+  filterByPeriod,
+} from "@/lib/insights/aggregates";
+import { computeOperatorLevel } from "@/lib/insights/operator-level";
+import {
+  INSIGHTS_PERIODS,
+  LEVEL_TIER_META,
+  PERIOD_LABEL,
+  computeScansHash,
+  periodDays,
+  type CompactScan,
+  type InsightsPeriod,
+  type StrategicBrief,
+  type Strength,
+  type Blindspot,
+} from "@/types/insights";
+import { InsightsHero, useProfileTags } from "@/components/insights-v2/insights-hero";
+import { PeriodControl } from "@/components/insights-v2/period-control";
+import { StrengthsBlindspots } from "@/components/insights-v2/strengths-blindspots";
+import { ScanningRhythm } from "@/components/insights-v2/scanning-rhythm";
+import { MetricGrid } from "@/components/insights-v2/metric-grid";
+import { NicheCountryMatrix } from "@/components/insights-v2/niche-country-matrix";
+import {
+  StrategicBriefCard,
+  SavedBriefs,
+} from "@/components/insights-v2/strategic-brief-card";
+import { DeepDive } from "@/components/insights-v2/deep-dive";
+import { ComparisonHistoryRail } from "@/components/insights-v2/comparison-history-rail";
+import { InsightsExportActions } from "@/components/insights-v2/export-actions";
+import { InsightsAdminDiagnostics } from "@/components/insights-v2/admin-diagnostics";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import type { Product } from "@/types";
 
 export default function InsightsPage() {
-  const products = useProductStore((s) => s.products);
-  const isClient = useIsClient();
+  return (
+    <Suspense fallback={null}>
+      <InsightsPageInner />
+    </Suspense>
+  );
+}
 
-  const total = products.length;
-  const avgScore =
-    total > 0
-      ? Math.round(products.reduce((s, p) => s + p.sellScore, 0) / total)
-      : 0;
-  const verdictDist = useMemo(
-    () => getVerdictDistribution(products),
-    [products],
+function InsightsPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { profile, user } = useUser();
+  const products = useProductStore((s) => s.products);
+  const favorites = useProductStore((s) => s.favorites);
+  const fetchAllStatuses = useProductStatusStore((s) => s.fetchAll);
+  const statuses = useProductStatusStore((s) => s.statuses);
+  // Read isAdmin once so the credits store stays mounted as a dependency
+  // (consumed downstream via useCreditsStore in child components).
+  useCreditsStore((s) => s.isAdmin);
+
+  const [period, setPeriod] = useState<InsightsPeriod>(() => {
+    const p = searchParams.get("period");
+    return INSIGHTS_PERIODS.includes(p as InsightsPeriod) ? (p as InsightsPeriod) : "30d";
+  });
+  const [compareToPrev, setCompareToPrev] = useState(false);
+  const [comparisonsCount, setComparisonsCount] = useState(0);
+
+  // Sync product status from Supabase on mount.
+  useEffect(() => {
+    void fetchAllStatuses();
+  }, [fetchAllStatuses]);
+
+  // Count comparisons from Supabase (head-only count).
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const {
+        data: { user: u },
+      } = await supabase.auth.getUser();
+      if (!u || cancelled) return;
+      const { count } = await supabase
+        .from("comparison_verdicts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", u.id);
+      if (!cancelled) setComparisonsCount(count ?? 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Reflect period in the URL (shallow — no navigation).
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (period === "30d") url.searchParams.delete("period");
+    else url.searchParams.set("period", period);
+    window.history.replaceState({}, "", url);
+  }, [period]);
+
+  // ----------------------------------------------------------------------------
+  // Aggregations
+  // ----------------------------------------------------------------------------
+
+  const aggregates = useMemo(() => buildAggregates(products, period), [
+    products,
+    period,
+  ]);
+  const prevAggregates = useMemo(
+    () => buildAggregates(aggregates.inPrevPeriod, "all"),
+    [aggregates.inPrevPeriod],
   );
-  const overTime = useMemo(() => buildScoreOverTime(products), [products]);
-  const topFive = useMemo(
+
+  const overallAvg = useMemo(() => {
+    if (products.length === 0) return 0;
+    return Math.round(
+      products.reduce((s, p) => s + p.sellScore, 0) / products.length,
+    );
+  }, [products]);
+
+  // Operator level computed across ALL products + statuses (not just period).
+  const operatorLevel = useMemo(
     () =>
-      [...products]
-        .sort((a, b) => b.sellScore - a.sellScore)
-        .slice(0, 5),
-    [products],
-  );
-  const heatmap = useMemo(() => buildHeatmap(products), [products]);
-  const bestNiche = useMemo(
-    () =>
-      bestByGroup<Niche>(
+      computeOperatorLevel({
         products,
-        (p) => p.category,
-        (k) => NICHES[k].label,
-      ),
+        statuses,
+        favorites,
+        comparisonsCount,
+      }),
+    [products, statuses, favorites, comparisonsCount],
+  );
+
+  // ----------------------------------------------------------------------------
+  // Scan compaction for AI calls — uses BASE scores for cache stability.
+  // ----------------------------------------------------------------------------
+
+  const scansHashAllTime = useMemo(
+    () => computeScansHash(products.map((p) => ({ id: p.id, sellScore: p.sellScore }))),
     [products],
   );
-  const bestCountry = useMemo(
+  const compactScansInPeriod: CompactScan[] = useMemo(
+    () => aggregates.inPeriod.map(toCompact),
+    [aggregates.inPeriod],
+  );
+  // Period-specific hash (drives the brief cache so a different period yields a different brief).
+  const scansHashPeriod = useMemo(
     () =>
-      bestByGroup<string>(
-        products,
-        (p) => p.targetCountry,
-        (k) => `${COUNTRIES[k]?.flag ?? ""} ${COUNTRIES[k]?.name ?? k}`,
+      `${period}|` +
+      computeScansHash(
+        aggregates.inPeriod.map((p) => ({ id: p.id, sellScore: p.sellScore })),
       ),
-    [products],
+    [aggregates.inPeriod, period],
   );
+
+  // ----------------------------------------------------------------------------
+  // Profile tags (Gemini, free)
+  // ----------------------------------------------------------------------------
+
+  const hasEnoughDataForTags = products.length >= 3;
+  const { tags, loading: tagsLoading } = useProfileTags({
+    scans: products.slice(0, 60).map((p) => toCompact(p)),
+    scansHash: scansHashAllTime,
+    totalScans: products.length,
+    avgScore: overallAvg,
+    winRate:
+      products.length === 0
+        ? 0
+        : products.filter((p) => p.verdict === "go" || p.verdict === "test")
+            .length / products.length,
+    operatorLevel: operatorLevel.level,
+    enabled: hasEnoughDataForTags,
+  });
+
+  // ----------------------------------------------------------------------------
+  // Strengths & blindspots (Gemini Flash, free) — strengths/blindspots state
+  // is also tracked here so PDF export can include the latest content.
+  // ----------------------------------------------------------------------------
+
+  const [latestStrengths, setLatestStrengths] = useState<Strength[]>([]);
+  const [latestBlindspots, setLatestBlindspots] = useState<Blindspot[]>([]);
+  // Use the strengths-blindspots route side-effect to populate the PDF state.
+  // We re-fetch here ONCE (separate from the card's own fetch) to keep PDF
+  // export self-sufficient. The route caches the result so it costs nothing.
+  const sbBody = useMemo(
+    () =>
+      JSON.stringify({
+        scansHash: scansHashPeriod,
+        scans: compactScansInPeriod,
+        overallAvg,
+        periodStart: aggregates.byDay[0]?.date ?? new Date().toISOString().slice(0, 10),
+        periodEnd: new Date().toISOString().slice(0, 10),
+      }),
+    [scansHashPeriod, compactScansInPeriod, overallAvg, aggregates.byDay],
+  );
+  useEffect(() => {
+    if (!isSupabaseConfigured() || compactScansInPeriod.length < 3) {
+      const id = setTimeout(() => {
+        setLatestStrengths([]);
+        setLatestBlindspots([]);
+      }, 0);
+      return () => clearTimeout(id);
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/insights/strengths-blindspots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: sbBody,
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          strengths: Strength[];
+          blindspots: Blindspot[];
+        };
+        if (cancelled) return;
+        setLatestStrengths(data.strengths ?? []);
+        setLatestBlindspots(data.blindspots ?? []);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sbBody, compactScansInPeriod.length]);
+
+  // ----------------------------------------------------------------------------
+  // Strategic brief state (held here so PDF can include it).
+  // ----------------------------------------------------------------------------
+
+  const [latestBrief, setLatestBrief] = useState<StrategicBrief | null>(null);
+
+  // ----------------------------------------------------------------------------
+  // Vault status counts (period-scoped where relevant).
+  // ----------------------------------------------------------------------------
+
+  const vaultCounts = useMemo(() => {
+    let testing = 0,
+      won = 0,
+      killed = 0,
+      watchlist = 0;
+    for (const p of aggregates.inPeriod) {
+      const s = statuses[p.id];
+      if (s === "testing") testing++;
+      else if (s === "won") won++;
+      else if (s === "killed") killed++;
+      else if (s === "watchlist") watchlist++;
+    }
+    return { testing, won, killed, watchlist };
+  }, [aggregates.inPeriod, statuses]);
+
+  // ----------------------------------------------------------------------------
+  // Sparkline data — daily scan counts + daily avg scores across the period.
+  // ----------------------------------------------------------------------------
+
+  const scanCountsByDay = useMemo(
+    () => aggregates.byDay.map((d) => d.count),
+    [aggregates.byDay],
+  );
+  const scoresByDay = useMemo(
+    () => aggregates.byDay.map((d) => d.avgScore),
+    [aggregates.byDay],
+  );
+
+  // ----------------------------------------------------------------------------
+  // Keyboard shortcuts (R, T, E)
+  // ----------------------------------------------------------------------------
+
+  const cyclePeriod = useCallback(() => {
+    const idx = INSIGHTS_PERIODS.indexOf(period);
+    const next = INSIGHTS_PERIODS[(idx + 1) % INSIGHTS_PERIODS.length];
+    setPeriod(next);
+    toast(`Period: ${PERIOD_LABEL[next]}`);
+  }, [period]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      // Ignore when typing in inputs/dialogs.
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "t") {
+        e.preventDefault();
+        cyclePeriod();
+      } else if (k === "r") {
+        e.preventDefault();
+        // Find the regenerate button — keeps the keyboard wired to the same
+        // confirm-then-spend flow as the click target.
+        const btn = Array.from(
+          document.querySelectorAll<HTMLButtonElement>("button"),
+        ).find((b) => /Regenerate|Generate ·/.test(b.textContent ?? ""));
+        btn?.click();
+      } else if (k === "e") {
+        e.preventDefault();
+        const btn = Array.from(
+          document.querySelectorAll<HTMLButtonElement>("button"),
+        ).find((b) => /Export insights as PDF/.test(b.textContent ?? ""));
+        btn?.click();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cyclePeriod]);
+
+  // ----------------------------------------------------------------------------
+  // "New scan since loaded" toast — listens for storage changes (zustand
+  // persist writes to localStorage, so cross-tab updates fire there).
+  // ----------------------------------------------------------------------------
+
+  const [initialCount] = useState(products.length);
+  useEffect(() => {
+    if (products.length <= initialCount) return;
+    const id = setTimeout(() => {
+      toast(
+        `${products.length - initialCount} new scan since you loaded — refresh for fresh insights`,
+        {
+          action: {
+            label: "Refresh",
+            onClick: () => router.refresh(),
+          },
+        },
+      );
+    }, 0);
+    return () => clearTimeout(id);
+    // We want this to ONLY fire when the count grows after mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length]);
+
+  // ----------------------------------------------------------------------------
+  // First name for PDF/brief
+  // ----------------------------------------------------------------------------
+
+  const firstName =
+    (profile?.display_name ?? user?.email?.split("@")[0] ?? "there")
+      .trim()
+      .split(/\s+/)[0] ?? "there";
+
+  // ----------------------------------------------------------------------------
+  // PDF metrics + tables
+  // ----------------------------------------------------------------------------
+
+  const actionRateValue = useMemo(
+    () => computeActionRate(aggregates.inPeriod, statuses),
+    [aggregates.inPeriod, statuses],
+  );
+
+  const pdfMetrics = useMemo(
+    () => ({
+      totalScans: aggregates.totalScans,
+      avgScore: aggregates.avgScore,
+      winRate: aggregates.winRate,
+      actionRate: actionRateValue,
+      highestScore: aggregates.highestScore,
+      creditsSpent: aggregates.creditsSpentEstimate,
+      topNiche: aggregates.byNiche[0]?.label ?? "—",
+      topCountry: aggregates.byCountry[0]?.label ?? "—",
+    }),
+    [aggregates, actionRateValue],
+  );
+
+  const days = periodDays(period);
+  // periodStart/end depend on "now" — impure for render. We compute them in a
+  // tiny effect and store as state, so the render itself stays pure (React 19
+  // strict-purity rule).
+  const [periodBounds, setPeriodBounds] = useState<{ start: string; end: string }>(
+    () => ({
+      start: "1970-01-01",
+      end: "1970-01-01",
+    }),
+  );
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const end = new Date().toISOString().slice(0, 10);
+      let start: string;
+      if (days === null) {
+        start = products
+          .reduce(
+            (m, p) => (p.createdAt < m ? p.createdAt : m),
+            new Date().toISOString(),
+          )
+          .slice(0, 10);
+      } else {
+        start = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10);
+      }
+      setPeriodBounds({ start, end });
+    }, 0);
+    return () => clearTimeout(id);
+  }, [days, products]);
+  const periodStart = periodBounds.start;
+  const periodEnd = periodBounds.end;
+
+  // ----------------------------------------------------------------------------
+  // Empty state — under 5 scans the page shows a friendlier placeholder.
+  // ----------------------------------------------------------------------------
+
+  const hasMinimalData = products.length >= 5;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
-      <header className="mb-8 flex items-end justify-between gap-3">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 text-xs text-text-muted">
-            <Activity className="h-3 w-3" />
-            Your usage
-          </div>
-          <h1 className="mt-4 text-3xl font-medium tracking-tight md:text-4xl">
-            Insights
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Patterns from your scoring history. Local-only.
-          </p>
-        </div>
-      </header>
+    <main className="mx-auto w-full max-w-7xl px-6 py-10 pb-32">
+      <InsightsHero
+        level={operatorLevel}
+        tags={tags}
+        tagsLoading={tagsLoading}
+        hasEnoughData={products.length >= 5}
+      />
 
-      {/* Top stat row */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat
-          icon={Activity}
-          label="Total scored"
-          value={<ScoreNumber value={total} className="text-3xl" />}
-          accent="#9CA3AF"
-        />
-        <Stat
-          icon={TrendingUp}
-          label="Avg score"
-          value={<ScoreNumber value={avgScore} className="text-3xl" />}
-          accent="#00D26A"
-        />
-        {bestNiche && (
-          <Stat
-            icon={Flame}
-            label="Best niche"
-            value={
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-mono text-2xl tabular-nums">
-                  {bestNiche.avg}
-                </span>
-                <span className="text-sm text-text-muted">{bestNiche.label}</span>
-              </div>
-            }
-            accent={NICHES[bestNiche.key].color}
+      <PeriodControl
+        period={period}
+        onChange={setPeriod}
+        compareToPrev={compareToPrev}
+        onCompareChange={setCompareToPrev}
+      />
+
+      {!hasMinimalData ? (
+        <EmptyState />
+      ) : (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="mt-8"
+          >
+            <StrengthsBlindspots
+              scansHash={scansHashPeriod}
+              scans={compactScansInPeriod}
+              overallAvg={overallAvg}
+              periodStart={periodStart}
+              periodEnd={periodEnd}
+              enabled={compactScansInPeriod.length >= 3}
+            />
+          </motion.div>
+
+          <div className="mt-8">
+            <ScanningRhythm
+              byDay={aggregates.byDay}
+              byHour={aggregates.byHour}
+              byScoreBucket={aggregates.byScoreBucket}
+            />
+          </div>
+
+          <div className="mt-8">
+            <MetricGrid
+              totalScans={aggregates.totalScans}
+              prevTotalScans={prevAggregates.totalScans}
+              avgScore={aggregates.avgScore}
+              prevAvgScore={prevAggregates.avgScore}
+              winRate={aggregates.winRate}
+              prevWinRate={prevAggregates.winRate}
+              creditsSpent={aggregates.creditsSpentEstimate}
+              prevCreditsSpent={prevAggregates.creditsSpentEstimate}
+              highestScore={aggregates.highestScore}
+              prevHighestScore={prevAggregates.highestScore}
+              mostScannedNiche={
+                aggregates.byNiche[0]
+                  ? {
+                      label: aggregates.byNiche[0].label,
+                      count: aggregates.byNiche[0].count,
+                    }
+                  : null
+              }
+              mostScannedCountry={
+                aggregates.byCountry[0]
+                  ? {
+                      label: aggregates.byCountry[0].label,
+                      count: aggregates.byCountry[0].count,
+                    }
+                  : null
+              }
+              actionRate={actionRateValue}
+              prevActionRate={computeActionRate(
+                aggregates.inPrevPeriod,
+                statuses,
+              )}
+              scanCountsByDay={scanCountsByDay}
+              scoresByDay={scoresByDay}
+            />
+          </div>
+
+          <div className="mt-8">
+            <NicheCountryMatrix matrix={aggregates.matrix} />
+          </div>
+
+          <div className="mt-8">
+            <StrategicBriefCard
+              scansHash={scansHashPeriod}
+              scans={compactScansInPeriod}
+              periodLabel={PERIOD_LABEL[period]}
+              periodStart={periodStart}
+              periodEnd={periodEnd}
+              operatorLevel={operatorLevel.level}
+              operatorTier={LEVEL_TIER_META[operatorLevel.tier].label}
+              testingCount={vaultCounts.testing}
+              wonCount={vaultCounts.won}
+              killedCount={vaultCounts.killed}
+              watchlistCount={vaultCounts.watchlist}
+              comparisonsCount={comparisonsCount}
+              autoLoad={true}
+              totalScansAllTime={products.length}
+              onRegenerated={() => {
+                /* placeholder — brief reflected directly in component state */
+              }}
+            />
+            <SavedBriefs enabled={isSupabaseConfigured()} />
+          </div>
+
+          {/* Hidden listener so latestBrief stays in sync with whatever the
+              brief card most recently rendered (so PDF includes it). We hook
+              into the strategic brief by inspecting the DOM cell that holds
+              the portrait text — instead, just refetch the cached brief. */}
+          <BriefMirror
+            scansHash={scansHashPeriod}
+            onLoaded={setLatestBrief}
           />
-        )}
-        {bestCountry && (
-          <Stat
-            icon={Globe2}
-            label="Best country"
-            value={
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-mono text-2xl tabular-nums">
-                  {bestCountry.avg}
-                </span>
-                <span className="text-sm text-text-muted">
-                  {bestCountry.label}
-                </span>
-              </div>
-            }
-            accent="#3B82F6"
-          />
-        )}
+
+          <div className="mt-8">
+            <DeepDive products={aggregates.inPeriod} statuses={statuses} />
+          </div>
+
+          <ComparisonHistoryRailWrapper />
+
+          <InsightsAdminDiagnostics />
+        </>
+      )}
+
+      <div className="mt-10 flex flex-wrap items-center justify-end gap-3">
+        <InsightsExportActions
+          firstName={firstName}
+          periodLabel={PERIOD_LABEL[period]}
+          operatorLevel={operatorLevel}
+          profileTags={tags}
+          brief={latestBrief}
+          strengths={latestStrengths}
+          blindspots={latestBlindspots}
+          metrics={pdfMetrics}
+          topNicheRows={aggregates.byNiche.map((r) => ({
+            label: r.label,
+            count: r.count,
+            avgScore: r.avgScore,
+          }))}
+          topCountryRows={aggregates.byCountry.map((r) => ({
+            label: r.label,
+            count: r.count,
+            avgScore: r.avgScore,
+          }))}
+        />
       </div>
-
-      {/* Charts */}
-      <section className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-3">
-        {/* Avg score over time */}
-        <div className="rounded-2xl border border-border-soft bg-surface p-5 md:col-span-2">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-text">Avg score over time</h2>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
-              By day · {overTime.length} pts
-            </span>
-          </div>
-          <div className="h-56 w-full">
-            {isClient && overTime.length > 0 ? (
-              <ResponsiveArea data={overTime} />
-            ) : (
-              <EmptyChart text="No history yet" />
-            )}
-          </div>
-        </div>
-
-        {/* Verdict donut */}
-        <div className="rounded-2xl border border-border-soft bg-surface p-5">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-text">Verdict mix</h2>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
-              All products
-            </span>
-          </div>
-          <div className="relative h-56 w-full">
-            {isClient && total > 0 ? (
-              <ResponsiveDonut data={verdictDist} total={total} />
-            ) : (
-              <EmptyChart text="No products yet" />
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Top 5 */}
-      <section className="mt-8 rounded-2xl border border-border-soft bg-surface p-5">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-text">Top 5 of all time</h2>
-          <Crown className="h-3.5 w-3.5 text-go" />
-        </div>
-        {topFive.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-text-muted">
-            Score your first product to populate this list.
-          </p>
-        ) : (
-          <ol className="divide-y divide-border-soft">
-            {topFive.map((p, i) => (
-              <li
-                key={p.id}
-                className="grid grid-cols-[24px_1fr_60px_80px] items-center gap-3 py-2.5"
-              >
-                <span className="font-mono text-xs tabular-nums text-text-dim">
-                  #{i + 1}
-                </span>
-                <div className="min-w-0">
-                  <div className="truncate text-sm text-text">{p.name}</div>
-                  <div className="font-mono text-[10px] text-text-dim">
-                    {NICHES[p.category].label} · {COUNTRIES[p.targetCountry]?.flag} {p.targetCountry}
-                  </div>
-                </div>
-                <span className="font-mono text-sm tabular-nums text-text">
-                  {p.sellScore}
-                </span>
-                <span
-                  className="justify-self-end inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider"
-                  style={{
-                    backgroundColor:
-                      p.verdict === "go"
-                        ? "rgba(0,210,106,0.15)"
-                        : p.verdict === "test"
-                          ? "rgba(245,166,35,0.15)"
-                          : p.verdict === "risky"
-                            ? "rgba(249,115,22,0.15)"
-                            : "rgba(239,68,68,0.15)",
-                    color:
-                      p.verdict === "go"
-                        ? "#00D26A"
-                        : p.verdict === "test"
-                          ? "#F5A623"
-                          : p.verdict === "risky"
-                            ? "#F97316"
-                            : "#EF4444",
-                  }}
-                >
-                  {p.verdict.toUpperCase()}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-
-      {/* Heatmap */}
-      <section className="mt-8 rounded-2xl border border-border-soft bg-surface p-5">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-text">Scoring activity</h2>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
-            Last 12 weeks
-          </span>
-        </div>
-        <Heatmap days={heatmap} />
-      </section>
     </main>
   );
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: React.ReactNode;
-  accent: string;
-}) {
+/* -------------------------------------------------------------------------- */
+
+function ComparisonHistoryRailWrapper() {
   return (
-    <div className="rounded-xl border border-border-soft bg-surface p-5">
-      <div className="flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5" style={{ color: accent }} />
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
-          {label}
-        </span>
-      </div>
-      <div className="mt-3 leading-none">{value}</div>
+    <div className="mt-8">
+      <ComparisonHistoryRail enabled={isSupabaseConfigured()} />
     </div>
   );
 }
 
-function EmptyChart({ text }: { text: string }) {
-  return (
-    <div className="flex h-full w-full items-center justify-center text-xs text-text-muted">
-      {text}
-    </div>
-  );
+/**
+ * Sidecar component that re-reads the cached strategic brief once on mount
+ * (so the PDF export can include it without forcing the user to generate).
+ * The brief card itself owns the user-facing state; this is a read-only mirror.
+ */
+function BriefMirror({
+  scansHash,
+  onLoaded,
+}: {
+  scansHash: string;
+  onLoaded: (b: StrategicBrief | null) => void;
+}) {
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        // Hit GET first — returns recent saved briefs, take the most recent
+        // matching scansHash if any. Otherwise leave latestBrief null until
+        // the user actively generates.
+        const res = await fetch("/api/insights/brief", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          briefs?: Array<{
+            portrait: string;
+            whats_working: unknown;
+            needs_attention: unknown;
+            hypothesis: string;
+            plan: unknown;
+            scans_hash?: string;
+          }>;
+        };
+        const candidate = data.briefs?.[0];
+        if (!candidate || cancelled) {
+          onLoaded(null);
+          return;
+        }
+        const { strategicBriefSchema } = await import("@/types/insights");
+        const parsed = strategicBriefSchema.safeParse({
+          portrait: candidate.portrait,
+          whatsWorking: candidate.whats_working,
+          needsAttention: candidate.needs_attention,
+          hypothesis: candidate.hypothesis,
+          planForNextMonth: candidate.plan,
+        });
+        if (cancelled) return;
+        onLoaded(parsed.success ? parsed.data : null);
+      } catch {
+        if (!cancelled) onLoaded(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scansHash, onLoaded]);
+  return null;
 }
 
-function ResponsiveArea({
-  data,
-}: {
-  data: { day: string; avg: number; n: number }[];
-}) {
-  const series = data.map((d) => ({
-    day: d.day,
-    avg: d.avg,
-    label: format(new Date(d.day), "MMM d"),
-  }));
+/* -------------------------------------------------------------------------- */
+/* Empty state — under 5 scans                                                 */
+/* -------------------------------------------------------------------------- */
+
+function EmptyState() {
   return (
-    <AreaChart
-      data={series}
-      width={800}
-      height={224}
-      margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
-      style={{ width: "100%", height: "100%" }}
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="glass mt-8 rounded-3xl p-10 text-center"
     >
-      <defs>
-        <linearGradient id="insights-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#00D26A" stopOpacity={0.35} />
-          <stop offset="100%" stopColor="#00D26A" stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <XAxis
-        dataKey="label"
-        tick={{ fill: "#6B7280", fontSize: 10 }}
-        axisLine={false}
-        tickLine={false}
-      />
-      <YAxis hide domain={[0, 100]} />
-      <RTooltip cursor={{ stroke: "#2A2A2F" }} content={<ChartTooltip />} />
-      <Area
-        type="monotone"
-        dataKey="avg"
-        stroke="#00D26A"
-        strokeWidth={2}
-        fill="url(#insights-grad)"
-        animationDuration={900}
-        animationEasing="ease-out"
-        dot={false}
-        activeDot={{
-          r: 3,
-          fill: "#00D26A",
-          stroke: "#0A0A0B",
-          strokeWidth: 2,
+      <h2 className="font-serif text-2xl text-text">
+        Your story is just beginning
+      </h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-text-muted">
+        Insights take shape after a few scans. Score 5+ products and your
+        strengths, blindspots, and scanning rhythm appear here.
+      </p>
+      <a
+        href="/scan"
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-medium text-white shadow-[0_8px_22px_-6px_rgba(91,141,255,0.55)] hover:brightness-110"
+        style={{
+          background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
         }}
-      />
-    </AreaChart>
+      >
+        Run your first scan
+      </a>
+    </motion.div>
   );
 }
 
-function ResponsiveDonut({
-  data,
-  total,
-}: {
-  data: { verdict: string; label: string; color: string; value: number }[];
-  total: number;
-}) {
-  return (
-    <>
-      <PieChart width={260} height={224} style={{ width: "100%", height: "100%" }}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="label"
-          cx="50%"
-          cy="50%"
-          innerRadius={50}
-          outerRadius={75}
-          paddingAngle={2}
-          stroke="#0A0A0B"
-          strokeWidth={2}
-          animationDuration={900}
-          animationEasing="ease-out"
-        >
-          {data.map((d) => (
-            <Cell key={d.verdict} fill={d.color} />
-          ))}
-        </Pie>
-        <RTooltip content={<ChartTooltip />} />
-      </PieChart>
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-mono text-2xl font-medium leading-none tabular-nums">
-          {total}
-        </span>
-        <span className="mt-1 font-mono text-[10px] uppercase tracking-wider text-text-dim">
-          products
-        </span>
-      </div>
-    </>
-  );
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                     */
+/* -------------------------------------------------------------------------- */
+
+function toCompact(p: Product): CompactScan {
+  return {
+    id: p.id,
+    name: p.name,
+    niche: p.category,
+    country: p.targetCountry,
+    score: p.sellScore,
+    verdict: p.verdict,
+    pillars: p.pillars,
+    createdAt: p.createdAt,
+  };
 }
 
-function Heatmap({ days }: { days: { date: string; count: number }[] }) {
-  // Group into 12 columns × 7 rows (Sun..Sat).
-  const weeks: { date: string; count: number }[][] = [];
-  for (let w = 0; w < 12; w++) {
-    weeks.push(days.slice(w * 7, (w + 1) * 7));
-  }
-  return (
-    <div className="flex items-end gap-1">
-      {weeks.map((week, wi) => (
-        <div key={wi} className="grid grid-rows-7 gap-1">
-          {week.map((cell) => (
-            <div
-              key={cell.date}
-              title={`${cell.date}: ${cell.count} scan${cell.count === 1 ? "" : "s"}`}
-              className={cn(
-                "h-3 w-3 rounded-sm transition-colors",
-                cell.count === 0 && "border border-border-soft/60",
-              )}
-              style={{ backgroundColor: heatColor(cell.count) }}
-            />
-          ))}
-        </div>
-      ))}
-      <div className="ml-3 flex items-center gap-1 self-start">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-text-dim">
-          Less
-        </span>
-        {[0, 1, 3, 6, 10].map((n) => (
-          <span
-            key={n}
-            className="h-3 w-3 rounded-sm"
-            style={{ backgroundColor: heatColor(n) }}
-          />
-        ))}
-        <span className="font-mono text-[9px] uppercase tracking-wider text-text-dim">
-          More
-        </span>
-      </div>
-    </div>
-  );
-}
+/* Unused but exported so tree-shaking notices the side imports. */
+export { NICHES, COUNTRIES, filterByPeriod };
