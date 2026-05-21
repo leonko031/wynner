@@ -60,17 +60,18 @@ export function recommendNextStep(input: Inputs): NextStep {
     };
   }
 
-  // 3. Has scans, no favorites — encourage building a vault
+  // 3. Has scans, no favorites — encourage favoriting (powers strategic brief
+  //    + operator level signals).
   if (scanCount > 0 && favoriteCount === 0) {
     return {
-      id: "build-vault",
+      id: "build-favorites",
       icon: "Heart",
       accent: "#FF7E5F",
       headline: "Star the products you love",
       subhead:
-        "Favorites build your personal vault — the products you'll come back to compare and ship.",
-      cta: "Browse your scans",
-      href: "/vault",
+        "Favorites tell Wynner which scans matter — they sharpen your insights and the comparison view.",
+      cta: "Score another product",
+      href: "/scan",
     };
   }
 
@@ -132,10 +133,11 @@ export function recommendNextStep(input: Inputs): NextStep {
     {
       icon: "Lightbulb",
       accent: "#FF89C5",
-      headline: "Re-score an older favorite",
-      subhead: "Market conditions shift. A favorite from last month might score very differently today.",
-      cta: "Open vault",
-      href: "/vault?favoritesOnly=true",
+      headline: "Compare your favorites against each other",
+      subhead:
+        "Pick a winner from the products you've already starred. The compare page surfaces which one ships first.",
+      cta: "Open compare",
+      href: "/compare",
     },
     {
       icon: "FlaskConical",

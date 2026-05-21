@@ -6,17 +6,13 @@ import {
   BookOpen,
   Clock,
   Compass,
-  Heart,
   History,
   Image as ImageIcon,
   Layers,
   Layout,
-  Search,
   Settings,
   Sparkles,
   SunMoon,
-  TrendingUp,
-  Vault,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -31,7 +27,6 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { useProductStore } from "@/lib/store/products";
-import { NICHES_LIST } from "@/lib/data/niches";
 
 type Props = {
   open: boolean;
@@ -105,11 +100,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               Scan new product
               <CommandShortcut>S</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => go("/vault")}>
-              <Vault className="mr-2 h-4 w-4" />
-              Open vault
-              <CommandShortcut>V</CommandShortcut>
-            </CommandItem>
             <CommandItem onSelect={() => go("/compare")}>
               <Layers className="mr-2 h-4 w-4" />
               Open compare
@@ -128,46 +118,20 @@ export function CommandPalette({ open, onOpenChange }: Props) {
 
           <CommandSeparator />
 
-          <CommandGroup heading="Filters">
-            <CommandItem onSelect={() => go("/vault?verdict=go")}>
-              <TrendingUp className="mr-2 h-4 w-4 text-go" />
-              Show only GO products
-            </CommandItem>
-            <CommandItem onSelect={() => go("/vault?verdict=test")}>
-              <TrendingUp className="mr-2 h-4 w-4 text-test" />
-              Show only TEST products
-            </CommandItem>
-            <CommandItem onSelect={() => go("/vault?favoritesOnly=1")}>
-              <Heart className="mr-2 h-4 w-4 text-skip" />
-              Show only favorites
-            </CommandItem>
-            {NICHES_LIST.slice(0, 5).map((n) => (
-              <CommandItem
-                key={n.niche}
-                onSelect={() => go(`/vault?niche=${n.niche}`)}
-              >
-                <Search className="mr-2 h-4 w-4" />
-                Show only {n.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-
-          <CommandSeparator />
-
           <CommandGroup heading="Navigation">
             <CommandItem onSelect={() => go("/dashboard")}>
               <Compass className="mr-2 h-4 w-4" />
               Dashboard
               <CommandShortcut>⌘1</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => go("/vault")}>
-              <Vault className="mr-2 h-4 w-4" />
-              Vault
-              <CommandShortcut>⌘2</CommandShortcut>
-            </CommandItem>
             <CommandItem onSelect={() => go("/compare")}>
               <Layers className="mr-2 h-4 w-4" />
               Compare
+              <CommandShortcut>⌘2</CommandShortcut>
+            </CommandItem>
+            <CommandItem onSelect={() => go("/insights")}>
+              <Compass className="mr-2 h-4 w-4" />
+              Insights
               <CommandShortcut>⌘3</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => go("/scan")}>

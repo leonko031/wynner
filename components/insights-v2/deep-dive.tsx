@@ -8,14 +8,12 @@ import { Sparkline } from "@/components/animated/sparkline";
 import { NICHES } from "@/lib/data/niches";
 import { COUNTRIES } from "@/lib/data/countries";
 import type { Product, Verdict } from "@/types";
-import type { ProductStatus } from "@/types/vault";
 import { cn } from "@/lib/utils";
 
 type Tab = "niche" | "country";
 
 type Props = {
   products: Product[];
-  statuses: Record<string, ProductStatus>;
 };
 
 const VERDICT_COLOR: Record<Verdict, string> = {
@@ -66,7 +64,14 @@ function buildSparkline(products: Product[]): number[] {
   });
 }
 
-function rowsByNiche(products: Product[], statuses: Record<string, ProductStatus>): Row[] {
+/** "Win rate" — % of scans in this slice that landed GO or TEST. */
+function positiveRate(arr: Product[]): number {
+  if (arr.length === 0) return 0;
+  const wins = arr.filter((p) => p.verdict === "go" || p.verdict === "test").length;
+  return wins / arr.length;
+}
+
+function rowsByNiche(products: Product[]): Row[] {
   const groups = new Map<string, Product[]>();
   for (const p of products) {
     const arr = groups.get(p.category) ?? [];
@@ -78,10 +83,6 @@ function rowsByNiche(products: Product[], statuses: Record<string, ProductStatus
       const meta = NICHES[k as keyof typeof NICHES];
       const verdicts: Record<Verdict, number> = { go: 0, test: 0, risky: 0, skip: 0 };
       for (const p of arr) verdicts[p.verdict]++;
-      const actionable = arr.filter((p) => {
-        const s = statuses[p.id];
-        return s === "testing" || s === "won";
-      }).length;
       return {
         key: k,
         label: meta?.label ?? k,
@@ -92,18 +93,15 @@ function rowsByNiche(products: Product[], statuses: Record<string, ProductStatus
           arr.reduce((s, p) => s + p.sellScore, 0) / arr.length,
         ),
         verdicts,
-        winRate: arr.length === 0 ? 0 : actionable / arr.length,
+        winRate: positiveRate(arr),
         spark: buildSparkline(arr),
-        drillUrl: `/vault?niche=${k}`,
+        drillUrl: `/scan?niche=${k}`,
       };
     })
     .sort((a, b) => b.count - a.count);
 }
 
-function rowsByCountry(
-  products: Product[],
-  statuses: Record<string, ProductStatus>,
-): Row[] {
+function rowsByCountry(products: Product[]): Row[] {
   const groups = new Map<string, Product[]>();
   for (const p of products) {
     const arr = groups.get(p.targetCountry) ?? [];
@@ -115,10 +113,6 @@ function rowsByCountry(
       const meta = COUNTRIES[k];
       const verdicts: Record<Verdict, number> = { go: 0, test: 0, risky: 0, skip: 0 };
       for (const p of arr) verdicts[p.verdict]++;
-      const actionable = arr.filter((p) => {
-        const s = statuses[p.id];
-        return s === "testing" || s === "won";
-      }).length;
       return {
         key: k,
         label: meta ? `${meta.flag} ${meta.name}` : k,
@@ -128,22 +122,19 @@ function rowsByCountry(
           arr.reduce((s, p) => s + p.sellScore, 0) / arr.length,
         ),
         verdicts,
-        winRate: arr.length === 0 ? 0 : actionable / arr.length,
+        winRate: positiveRate(arr),
         spark: buildSparkline(arr),
-        drillUrl: `/vault?country=${k}`,
+        drillUrl: `/scan?country=${k}`,
       };
     })
     .sort((a, b) => b.count - a.count);
 }
 
-export function DeepDive({ products, statuses }: Props) {
+export function DeepDive({ products }: Props) {
   const [tab, setTab] = useState<Tab>("niche");
   const rows = useMemo(
-    () =>
-      tab === "niche"
-        ? rowsByNiche(products, statuses)
-        : rowsByCountry(products, statuses),
-    [tab, products, statuses],
+    () => (tab === "niche" ? rowsByNiche(products) : rowsByCountry(products)),
+    [tab, products],
   );
 
   return (

@@ -3,7 +3,6 @@
 import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 
-export type VaultLayout = "grid" | "list";
 export type ThemeMode = "system" | "light" | "dark";
 export type ScraperToggleId =
   | "productScrape"
@@ -37,8 +36,6 @@ export const DEFAULT_NOTIFICATION_TOGGLES: NotificationToggles = {
 };
 
 type PreferencesState = {
-  vaultLayout: VaultLayout;
-  setVaultLayout: (layout: VaultLayout) => void;
   redditVoiceEnabled: boolean;
   setRedditVoiceEnabled: (enabled: boolean) => void;
   compactMode: boolean;
@@ -69,7 +66,6 @@ type PreferencesState = {
 };
 
 type PersistedPrefs = {
-  vaultLayout: VaultLayout;
   redditVoiceEnabled: boolean;
   compactMode: boolean;
   preferProModel: boolean;
@@ -107,8 +103,6 @@ const storage: PersistStorage<PersistedPrefs> = {
 export const usePreferences = create<PreferencesState>()(
   persist(
     (set) => ({
-      vaultLayout: "grid",
-      setVaultLayout: (vaultLayout) => set({ vaultLayout }),
       redditVoiceEnabled: false,
       setRedditVoiceEnabled: (redditVoiceEnabled) =>
         set({ redditVoiceEnabled }),
@@ -152,7 +146,6 @@ export const usePreferences = create<PreferencesState>()(
       storage,
       partialize: (s) =>
         ({
-          vaultLayout: s.vaultLayout,
           redditVoiceEnabled: s.redditVoiceEnabled,
           compactMode: s.compactMode,
           preferProModel: s.preferProModel,

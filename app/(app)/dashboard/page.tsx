@@ -271,7 +271,7 @@ export default function DashboardPage() {
       color: bestN.color,
       avgScore: bestN.avgScore,
       trend: bestN.trend,
-      drillUrl: `/vault?niche=${bestN.niche}`,
+      drillUrl: `/scan?niche=${bestN.niche}`,
     };
   }, [bestN]);
   const bestCountryProps = useMemo(() => {
@@ -282,7 +282,7 @@ export default function DashboardPage() {
       name: countryName(bestC.code),
       avgScore: Math.round(bestC.avg),
       wins: bestC.wins,
-      drillUrl: `/vault?country=${bestC.code}`,
+      drillUrl: `/scan?country=${bestC.code}`,
     };
   }, [bestC]);
 
@@ -323,26 +323,36 @@ export default function DashboardPage() {
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      // Space or ↓ from the top scrolls past the first fold.
-      if ((e.key === " " || e.key === "ArrowDown") && window.scrollY < 40) {
+      // Space from the very top scrolls past the first fold (one-shot).
+      // ArrowDown is NOT intercepted — that key needs to behave like a
+      // normal scroll so users can read the page without being teleported.
+      if (e.key === " " && window.scrollY < 40) {
         e.preventDefault();
         scrollToId(SECTION_IDS.briefing);
         return;
       }
 
-      const k = e.key.toLowerCase();
-      const sectionMap: Record<string, string> = {
-        "1": SECTION_IDS.briefing,
-        "2": SECTION_IDS.picks,
-        "3": SECTION_IDS.pulse,
-        "4": SECTION_IDS.trail,
-        "5": SECTION_IDS.next,
-      };
-      if (sectionMap[e.key]) {
-        e.preventDefault();
-        scrollToId(sectionMap[e.key]);
-        return;
+      // Bare number keys 1-5 jump to sections — only when shift is held so
+      // they don't fire while the user is reading or interacting.
+      if (e.shiftKey) {
+        const sectionMap: Record<string, string> = {
+          "1": SECTION_IDS.briefing,
+          "2": SECTION_IDS.picks,
+          "3": SECTION_IDS.pulse,
+          "4": SECTION_IDS.trail,
+          "5": SECTION_IDS.next,
+        };
+        if (sectionMap[e.key]) {
+          e.preventDefault();
+          scrollToId(sectionMap[e.key]);
+          return;
+        }
       }
+
+      // B and N spend credits / navigate away — require Shift so a stray
+      // keypress never costs a credit or yanks the user off the page.
+      if (!e.shiftKey) return;
+      const k = e.key.toLowerCase();
       if (k === "b") {
         e.preventDefault();
         void regenerateBriefing();
@@ -357,9 +367,7 @@ export default function DashboardPage() {
               ? "/scan"
               : rec.actionType === "deepResearch"
                 ? "/scan?mode=deep"
-                : rec.actionType === "compare"
-                  ? "/compare"
-                  : "/vault";
+                : "/compare";
           window.location.href = href;
         }
       }

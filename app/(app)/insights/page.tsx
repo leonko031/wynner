@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useUser } from "@/lib/auth/use-user";
 import { useProductStore } from "@/lib/store/products";
-import { useProductStatusStore } from "@/lib/store/product-status";
 import { useCreditsStore } from "@/lib/store/credits";
 import { NICHES } from "@/lib/data/niches";
 import { COUNTRIES } from "@/lib/data/countries";
@@ -59,8 +58,6 @@ function InsightsPageInner() {
   const { profile, user } = useUser();
   const products = useProductStore((s) => s.products);
   const favorites = useProductStore((s) => s.favorites);
-  const fetchAllStatuses = useProductStatusStore((s) => s.fetchAll);
-  const statuses = useProductStatusStore((s) => s.statuses);
   // Read isAdmin once so the credits store stays mounted as a dependency
   // (consumed downstream via useCreditsStore in child components).
   useCreditsStore((s) => s.isAdmin);
@@ -71,11 +68,6 @@ function InsightsPageInner() {
   });
   const [compareToPrev, setCompareToPrev] = useState(false);
   const [comparisonsCount, setComparisonsCount] = useState(0);
-
-  // Sync product status from Supabase on mount.
-  useEffect(() => {
-    void fetchAllStatuses();
-  }, [fetchAllStatuses]);
 
   // Count comparisons from Supabase (head-only count).
   useEffect(() => {
@@ -131,11 +123,10 @@ function InsightsPageInner() {
     () =>
       computeOperatorLevel({
         products,
-        statuses,
         favorites,
         comparisonsCount,
       }),
-    [products, statuses, favorites, comparisonsCount],
+    [products, favorites, comparisonsCount],
   );
 
   // ----------------------------------------------------------------------------
@@ -240,25 +231,6 @@ function InsightsPageInner() {
   const [latestBrief, setLatestBrief] = useState<StrategicBrief | null>(null);
 
   // ----------------------------------------------------------------------------
-  // Vault status counts (period-scoped where relevant).
-  // ----------------------------------------------------------------------------
-
-  const vaultCounts = useMemo(() => {
-    let testing = 0,
-      won = 0,
-      killed = 0,
-      watchlist = 0;
-    for (const p of aggregates.inPeriod) {
-      const s = statuses[p.id];
-      if (s === "testing") testing++;
-      else if (s === "won") won++;
-      else if (s === "killed") killed++;
-      else if (s === "watchlist") watchlist++;
-    }
-    return { testing, won, killed, watchlist };
-  }, [aggregates.inPeriod, statuses]);
-
-  // ----------------------------------------------------------------------------
   // Sparkline data — daily scan counts + daily avg scores across the period.
   // ----------------------------------------------------------------------------
 
@@ -295,14 +267,17 @@ function InsightsPageInner() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // All page-level shortcuts require Shift so they never fire by accident
+      // while the user is reading or scrolling. R spends credits (Gemini call),
+      // T re-fetches everything, E pops a download — none of those should be
+      // one-key triggerable.
+      if (!e.shiftKey) return;
       const k = e.key.toLowerCase();
       if (k === "t") {
         e.preventDefault();
         cyclePeriod();
       } else if (k === "r") {
         e.preventDefault();
-        // Find the regenerate button — keeps the keyboard wired to the same
-        // confirm-then-spend flow as the click target.
         const btn = Array.from(
           document.querySelectorAll<HTMLButtonElement>("button"),
         ).find((b) => /Regenerate|Generate ·/.test(b.textContent ?? ""));
@@ -357,8 +332,8 @@ function InsightsPageInner() {
   // ----------------------------------------------------------------------------
 
   const actionRateValue = useMemo(
-    () => computeActionRate(aggregates.inPeriod, statuses),
-    [aggregates.inPeriod, statuses],
+    () => computeActionRate(aggregates.inPeriod, favorites),
+    [aggregates.inPeriod, favorites],
   );
 
   const pdfMetrics = useMemo(
@@ -489,7 +464,7 @@ function InsightsPageInner() {
               actionRate={actionRateValue}
               prevActionRate={computeActionRate(
                 aggregates.inPrevPeriod,
-                statuses,
+                favorites,
               )}
               scanCountsByDay={scanCountsByDay}
               scoresByDay={scoresByDay}
@@ -509,10 +484,9 @@ function InsightsPageInner() {
               periodEnd={periodEnd}
               operatorLevel={operatorLevel.level}
               operatorTier={LEVEL_TIER_META[operatorLevel.tier].label}
-              testingCount={vaultCounts.testing}
-              wonCount={vaultCounts.won}
-              killedCount={vaultCounts.killed}
-              watchlistCount={vaultCounts.watchlist}
+              favoritesCount={
+                favorites instanceof Set ? favorites.size : 0
+              }
               comparisonsCount={comparisonsCount}
               autoLoad={true}
               totalScansAllTime={products.length}
@@ -533,7 +507,7 @@ function InsightsPageInner() {
           />
 
           <div className="mt-8">
-            <DeepDive products={aggregates.inPeriod} statuses={statuses} />
+            <DeepDive products={aggregates.inPeriod} />
           </div>
 
           <ComparisonHistoryRailWrapper />

@@ -78,11 +78,11 @@ const ENTRIES: Entry[] = [
     date: "May 17, 2026",
     title: "Productivity layer",
     blurb:
-      "The vault, the compare page, the global command palette, the keyboard shortcuts.",
+      "The compare page, the global command palette, the keyboard shortcuts.",
     bullets: [
-      "/vault with sticky filter bar, score range slider, country/niche chips",
-      "/compare with 3 slots, deep-link via ?products=…, winner mode + crown",
+      "/compare with up to 4 slots, deep-link via ?products=…, winner mode + crown",
       "Global ⌘K palette · Konami-style keyboard shortcuts · ? to inspect them",
+      "Single-letter jumps: S→scan · C→compare · I→insights",
     ],
     icon: CommandIcon,
     accent: "#8B5CF6",

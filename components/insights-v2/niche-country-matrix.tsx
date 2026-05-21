@@ -221,7 +221,7 @@ function RowFragment({
               ease: [0.22, 1, 0.36, 1],
             }}
             onClick={() =>
-              cell && router.push(`/vault?niche=${niche}&country=${c}`)
+              cell && router.push(`/scan?niche=${niche}&country=${c}`)
             }
             className={cn(
               "mx-auto block aspect-square rounded-md transition-shadow",

@@ -1,5 +1,5 @@
 import { verdictFromScore } from "@/types";
-import { geminiPro, isGeminiAvailable } from "@/lib/ai/gemini";
+import { geminiFlash, isGeminiAvailable } from "@/lib/ai/gemini";
 import {
   buildReasoningPrompt,
   reasoningSchema,
@@ -96,7 +96,9 @@ export async function runScore(
   let reasoning: ScoreReasoning;
   if (isGeminiAvailable()) {
     try {
-      reasoning = await geminiPro<ScoreReasoning>(
+      // Flash is plenty for the short reasoning summary — keeps scan latency
+      // under a couple seconds. Pro added depth but cost the user wait time.
+      reasoning = await geminiFlash<ScoreReasoning>(
         buildReasoningPrompt(input, pillars, sellScore),
         reasoningSchema,
       );

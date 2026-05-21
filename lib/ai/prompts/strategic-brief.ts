@@ -13,11 +13,8 @@ export type StrategicBriefContext = {
   /** Cached operator level snapshot, so the brief can reference the tier. */
   operatorLevel: number;
   operatorTier: string;
-  /** Counts pulled from vault status. */
-  testingCount: number;
-  wonCount: number;
-  killedCount: number;
-  watchlistCount: number;
+  /** Favorites the user kept (intent signal). */
+  favoritesCount: number;
   /** Distinct comparisons run in the period. */
   comparisonsCount: number;
 };
@@ -93,11 +90,8 @@ OPERATOR PROFILE
   Avg sell-score: ${avgScore}
   Verdict mix: ${goCount} GO, ${testCount} TEST, ${ctx.scans.length - goCount - testCount - skipCount} RISKY, ${skipCount} SKIP
 
-ACTION STATE (from their vault)
-  Currently Testing: ${ctx.testingCount}
-  Confirmed Won: ${ctx.wonCount}
-  Killed: ${ctx.killedCount}
-  On Watchlist: ${ctx.watchlistCount}
+INTENT SIGNALS
+  Favorites kept: ${ctx.favoritesCount}
   Comparisons run in period: ${ctx.comparisonsCount}
 
 NICHES SCANNED

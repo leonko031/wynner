@@ -107,7 +107,7 @@ OUTPUT FORMAT — ONE JSON OBJECT
       "label": "<1-line summary, e.g. 'Worth exploring'>",
       "gap": "<a specific gap: e.g. '0 scans of fitness niche this month'>",
       "insight": "<1 line of commentary — what they're probably missing>",
-      "exploreUrl": "<optional /scan?niche=... or /vault?... URL>"
+      "exploreUrl": "<optional /scan?niche=... URL>"
     },
     ...up to 3
   ]

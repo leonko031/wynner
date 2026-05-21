@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { CommandPalette } from "./command-palette";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { useProductStore } from "@/lib/store/products";
-import { usePreferences } from "@/lib/store/preferences";
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -24,7 +23,6 @@ export function GlobalShortcuts() {
   const router = useRouter();
   const pathname = usePathname();
   const toggleFavorite = useProductStore((s) => s.toggleFavorite);
-  const setVaultLayout = usePreferences((s) => s.setVaultLayout);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -45,8 +43,8 @@ export function GlobalShortcuts() {
         e.preventDefault();
         const map: Record<string, string> = {
           "1": "/dashboard",
-          "2": "/vault",
-          "3": "/compare",
+          "2": "/compare",
+          "3": "/insights",
           "4": "/scan",
         };
         router.push(map[e.key]);
@@ -69,8 +67,7 @@ export function GlobalShortcuts() {
 
       // The /compare page owns A / V / E for its own shortcuts (add product,
       // regenerate verdict, export). Skip the global handlers for those keys
-      // there so they don't double-fire (e.g. V → /vault while the user is
-      // trying to regenerate a verdict).
+      // there so they don't double-fire.
       if (pathname.startsWith("/compare")) {
         const k = key.toLowerCase();
         if (k === "a" || k === "v" || k === "e") return;
@@ -123,14 +120,14 @@ export function GlobalShortcuts() {
         router.push("/scan");
         return;
       }
-      if (lower === "v") {
-        e.preventDefault();
-        router.push("/vault");
-        return;
-      }
       if (lower === "c") {
         e.preventDefault();
         router.push("/compare");
+        return;
+      }
+      if (lower === "i") {
+        e.preventDefault();
+        router.push("/insights");
         return;
       }
       if (lower === "f") {
@@ -165,17 +162,11 @@ export function GlobalShortcuts() {
         }
         return;
       }
-      // G / L — vault layout switch
-      if ((lower === "g" || lower === "l") && pathname.startsWith("/vault")) {
-        e.preventDefault();
-        setVaultLayout(lower === "g" ? "grid" : "list");
-        return;
-      }
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [router, pathname, toggleFavorite, setVaultLayout, paletteOpen, shortcutsOpen]);
+  }, [router, pathname, toggleFavorite, paletteOpen, shortcutsOpen]);
 
   return (
     <>

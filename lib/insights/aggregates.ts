@@ -9,7 +9,6 @@ import { NICHES } from "@/lib/data/niches";
 import { COUNTRIES } from "@/lib/data/countries";
 import { periodDays, type InsightsPeriod } from "@/types/insights";
 import type { Product, Niche, Verdict } from "@/types";
-import type { ProductStatus } from "@/types/vault";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
@@ -281,17 +280,22 @@ export function pctDelta(current: number, previous: number): number {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Action rate from vault statuses                                             */
+/* Action rate                                                                 */
 /* -------------------------------------------------------------------------- */
-
+/**
+ * Proxy for "% of scans the user actually acted on". Vault statuses are gone;
+ * a kept favorite is now the strongest local signal that the user converted
+ * a scan into intent.
+ */
 export function actionRate(
   products: Product[],
-  statuses: Record<string, ProductStatus>,
+  favorites: Set<string> | string[] | null | undefined,
 ): number {
   if (products.length === 0) return 0;
-  const actionable = products.filter((p) => {
-    const s = statuses[p.id];
-    return s === "testing" || s === "won";
-  }).length;
+  const favSet =
+    favorites instanceof Set
+      ? favorites
+      : new Set(Array.isArray(favorites) ? favorites : []);
+  const actionable = products.filter((p) => favSet.has(p.id) || p.isFavorite).length;
   return actionable / products.length;
 }

@@ -275,13 +275,12 @@ function BriefingChipPill({ chip, index }: { chip: BriefingChip; index: number }
 function hrefForChip(chip: BriefingChip): string | null {
   switch (chip.action) {
     case "filter_niche":
-      return chip.value ? `/vault?niche=${encodeURIComponent(chip.value)}` : null;
+      // Vault is gone — niche filters now seed a new scan in that niche.
+      return chip.value ? `/scan?niche=${encodeURIComponent(chip.value)}` : null;
     case "filter_country":
-      return chip.value ? `/vault?country=${encodeURIComponent(chip.value)}` : null;
+      return chip.value ? `/scan?country=${encodeURIComponent(chip.value)}` : null;
     case "open_scan":
       return "/scan";
-    case "open_vault":
-      return "/vault";
     case "info":
     default:
       return null;

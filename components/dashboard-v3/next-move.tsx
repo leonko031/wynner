@@ -17,14 +17,12 @@ const ACTION_HREF: Record<EditorialRecommendation["actionType"], string> = {
   scan: "/scan",
   deepResearch: "/scan?mode=deep",
   compare: "/compare",
-  vault: "/vault",
 };
 
 const ACTION_CTA: Record<EditorialRecommendation["actionType"], string> = {
   scan: "Start a scan",
   deepResearch: "Run Deep Research",
   compare: "Open compare",
-  vault: "Open your vault",
 };
 
 /**
@@ -177,8 +175,6 @@ function ActionVisual({
       return <DeepResearchVisual />;
     case "compare":
       return <CompareTriangleVisual />;
-    case "vault":
-      return <VaultVisual />;
   }
 }
 
@@ -294,29 +290,6 @@ function DeepResearchVisual() {
           Six ad angles, three personas, a 14-day playbook — all in one PDF.
         </p>
       </div>
-    </div>
-  );
-}
-
-function VaultVisual() {
-  return (
-    <div className="grid h-56 w-full max-w-md grid-cols-2 gap-3">
-      {[0, 1, 2, 3].map((i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.15 * i }}
-          className="rounded-2xl border border-border-soft bg-surface/60 backdrop-blur-md"
-        >
-          <div className="h-16 w-full rounded-t-2xl bg-aurora-blue/15" />
-          <div className="space-y-1 p-2">
-            <div className="h-1.5 w-3/4 rounded-full bg-border-soft" />
-            <div className="h-1.5 w-1/2 rounded-full bg-border-soft" />
-          </div>
-        </motion.div>
-      ))}
     </div>
   );
 }

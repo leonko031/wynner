@@ -528,7 +528,7 @@ export default function SettingsPage() {
       <Section title="Appearance" subtitle="Dark only for now — light theme later">
         <Row
           title="Compact mode"
-          description="Denser cards across vault and dashboard."
+          description="Denser cards across the dashboard."
         >
           <Switch checked={compact} onCheckedChange={setCompact} />
         </Row>

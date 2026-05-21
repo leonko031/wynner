@@ -1,13 +1,13 @@
 /**
  * Operator level — turns a user's scan history into a 0-100 sophistication
- * score + tier. Pure client-side: takes the local product store and the
- * Supabase product_status map, returns a stable number.
+ * score + tier. Pure client-side: takes the local product store, returns a
+ * stable number.
  *
  * Composite of six components (each weighted, all clamped 0..1 internally):
  *   volume         (25%)  — scans in last 30 days
  *   diversity      (15%)  — distinct niches + countries
  *   sophistication (15%)  — % of "deep" scans (proxy: products w/ customerVoice)
- *   action         (20%)  — % marked Testing/Won in vault
+ *   action         (20%)  — % of scans the user favorited (intent proxy)
  *   recency        (15%)  — scans this week vs last
  *   engagement     (10%)  — comparisons run + favorites kept
  */
@@ -17,11 +17,9 @@ import {
   type OperatorLevelBreakdown,
 } from "@/types/insights";
 import type { Product } from "@/types";
-import type { ProductStatus } from "@/types/vault";
 
 export type OperatorLevelInputs = {
   products: Product[];
-  statuses: Record<string, ProductStatus>;
   favorites?: Set<string> | string[];
   comparisonsCount?: number;
 };
@@ -39,7 +37,6 @@ function daysAgoMs(n: number): number {
 
 export function computeOperatorLevel({
   products,
-  statuses,
   favorites,
   comparisonsCount = 0,
 }: OperatorLevelInputs): OperatorLevelBreakdown {
@@ -63,11 +60,15 @@ export function computeOperatorLevel({
   const deep = products.filter((p) => Boolean(p.customerVoice)).length;
   const sophistication = products.length === 0 ? 0 : clamp01(deep / products.length);
 
-  // --- Action — % of all scans marked Testing/Won. 1.0 at 30%. ---
-  const actionable = products.filter((p) => {
-    const s = statuses[p.id];
-    return s === "testing" || s === "won";
-  }).length;
+  // --- Action — % of scans the user favorited. 1.0 at 30%. Favorites are the
+  // strongest local "I'd act on this" signal now that vault statuses are gone.
+  const favSet =
+    favorites instanceof Set
+      ? favorites
+      : new Set(Array.isArray(favorites) ? favorites : []);
+  const actionable = products.filter(
+    (p) => favSet.has(p.id) || p.isFavorite,
+  ).length;
   const action = products.length === 0 ? 0 : clamp01(actionable / products.length / 0.3);
 
   // --- Recency — scans this week vs prior. ---

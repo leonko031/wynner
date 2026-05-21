@@ -14,7 +14,6 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/product",
   "/scan",
-  "/vault",
   "/compare",
   "/credits",
   "/settings",

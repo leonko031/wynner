@@ -26,7 +26,7 @@ import {
 } from "@/types/insights";
 import { cn } from "@/lib/utils";
 
-const BRIEF_COST = 5;
+const BRIEF_COST = 1;
 const UNLOCK_MIN_SCANS = 10;
 
 export type BriefEventDetail = {
@@ -44,10 +44,7 @@ type Props = {
   periodEnd: string;
   operatorLevel: number;
   operatorTier: string;
-  testingCount: number;
-  wonCount: number;
-  killedCount: number;
-  watchlistCount: number;
+  favoritesCount: number;
   comparisonsCount: number;
   /** When true, automatically loads the brief on mount (if scans >= unlock threshold). */
   autoLoad: boolean;
@@ -65,9 +62,9 @@ type State =
   | { kind: "error"; message: string };
 
 /**
- * The killer feature card. Aurora orb + 5-part Gemini Pro briefing.
+ * The killer feature card. Aurora orb + 5-part Gemini Flash briefing.
  *
- * ✦ 5 to generate (free for admins). Cached weekly per scansHash so
+ * ✦ 1 to generate (free for admins). Cached weekly per scansHash so
  * re-loads cost nothing until the user actually re-scores.
  */
 export function StrategicBriefCard(props: Props) {
@@ -96,10 +93,7 @@ export function StrategicBriefCard(props: Props) {
         periodEnd: props.periodEnd,
         operatorLevel: props.operatorLevel,
         operatorTier: props.operatorTier,
-        testingCount: props.testingCount,
-        wonCount: props.wonCount,
-        killedCount: props.killedCount,
-        watchlistCount: props.watchlistCount,
+        favoritesCount: props.favoritesCount,
         comparisonsCount: props.comparisonsCount,
       }),
     [
@@ -110,23 +104,22 @@ export function StrategicBriefCard(props: Props) {
       props.periodEnd,
       props.operatorLevel,
       props.operatorTier,
-      props.testingCount,
-      props.wonCount,
-      props.killedCount,
-      props.watchlistCount,
+      props.favoritesCount,
       props.comparisonsCount,
     ],
   );
 
-  async function fetchBrief(regenerate: boolean) {
-    setState({ kind: "loading" });
+  async function fetchBrief(regenerate: boolean, cacheOnly = false) {
+    // cacheOnly path stays silent on cache miss (returns to idle); only the
+    // explicit user-triggered path shows the loading skeleton.
+    if (!cacheOnly) setState({ kind: "loading" });
     const started = Date.now();
     try {
       const parsedBody = JSON.parse(body);
       const res = await fetch("/api/insights/brief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...parsedBody, regenerate }),
+        body: JSON.stringify({ ...parsedBody, regenerate, cacheOnly }),
       });
       const ms = Date.now() - started;
       const data = await res.json();
@@ -138,14 +131,28 @@ export function StrategicBriefCard(props: Props) {
         return;
       }
       if (!res.ok) {
+        // Silent failure on cache-only path — fall back to idle.
+        if (cacheOnly) {
+          setState({ kind: "idle" });
+          return;
+        }
         setState({
           kind: "error",
           message: data.message ?? `Couldn't load the brief (${res.status}).`,
         });
         return;
       }
+      // cacheOnly + miss → server returns brief: null. Show idle, no error.
+      if (cacheOnly && data.brief == null) {
+        setState({ kind: "idle" });
+        return;
+      }
       const parsed = strategicBriefSchema.safeParse(data.brief);
       if (!parsed.success) {
+        if (cacheOnly) {
+          setState({ kind: "idle" });
+          return;
+        }
         setState({ kind: "error", message: "The brief came back malformed." });
         return;
       }
@@ -168,6 +175,10 @@ export function StrategicBriefCard(props: Props) {
         });
       }
     } catch (err) {
+      if (cacheOnly) {
+        setState({ kind: "idle" });
+        return;
+      }
       setState({
         kind: "error",
         message: err instanceof Error ? err.message : "Unknown error",
@@ -175,8 +186,9 @@ export function StrategicBriefCard(props: Props) {
     }
   }
 
-  // Auto-load on mount (cache-only — the server already gates regeneration on
-  // a separate regenerate flag).
+  // Mount-time hydration: ALWAYS cache-only so opening /insights never spends
+  // credits or fires a Gemini call. If a cached brief exists, we render it;
+  // otherwise the user sees the idle state with an explicit "Generate" button.
   useEffect(() => {
     if (locked) {
       const id = setTimeout(() => setState({ kind: "locked" }), 0);
@@ -184,7 +196,7 @@ export function StrategicBriefCard(props: Props) {
     }
     if (!props.autoLoad) return;
     const id = setTimeout(() => {
-      void fetchBrief(false);
+      void fetchBrief(false, /* cacheOnly */ true);
     }, 0);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,7 +240,7 @@ export function StrategicBriefCard(props: Props) {
                     ? "cached this week"
                     : state.kind === "ready"
                       ? "fresh"
-                      : "Gemini Pro"}
+                      : "Gemini Flash"}
                 </p>
               </div>
               <BriefActions

@@ -82,7 +82,7 @@ OUTPUT FORMAT — ONE JSON OBJECT
     "<paragraph 3 — 1-2 sentences. ONE concrete action to take today, specific (a niche, a country, a comparison). This becomes the italic 'tactical recommendation' in the magazine layout.>"
   ],
   "chips": [
-    { "label": "<short label, max 30 chars>", "emoji": "<single emoji>", "action": "filter_niche" | "filter_country" | "open_scan" | "open_vault" | "info", "value": "<niche key OR country code OR omit for info/open_*>" },
+    { "label": "<short label, max 30 chars>", "emoji": "<single emoji>", "action": "filter_niche" | "filter_country" | "open_scan" | "info", "value": "<niche key OR country code OR omit for info/open_*>" },
     { "label": "...", "emoji": "...", "action": "...", "value": "..." },
     { "label": "...", "emoji": "...", "action": "...", "value": "..." }
   ],

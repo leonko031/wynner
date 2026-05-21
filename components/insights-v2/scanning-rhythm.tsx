@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   Bar,
@@ -124,7 +123,6 @@ function heatColor(count: number, avg: number): string {
 }
 
 function CalendarHeatmap({ days }: { days: DayBucket[] }) {
-  const router = useRouter();
   // Group into weeks (Sun..Sat). Pad to full weeks at the start.
   const padded: (DayBucket | null)[] = [...days];
   const firstDate = days[0]?.date;
@@ -159,13 +157,12 @@ function CalendarHeatmap({ days }: { days: DayBucket[] }) {
                       type="button"
                       whileHover={{ scale: 1.4 }}
                       transition={{ duration: 0.15 }}
-                      onClick={() =>
-                        cell.count > 0 && router.push(`/vault?date=${cell.date}`)
-                      }
+                      // /vault is gone — calendar heatmap is now display-only.
+                      // (No drill destination per-day in the rest of the app.)
                       className="h-3 w-3 rounded-[2px] border border-border-soft/60"
                       style={{
                         backgroundColor: heatColor(cell.count, cell.avgScore),
-                        cursor: cell.count > 0 ? "pointer" : "default",
+                        cursor: "default",
                       }}
                       aria-label={`${cell.date}: ${cell.count} scans`}
                     />
@@ -265,7 +262,6 @@ function DistributionChart({
 }: {
   data: { bucket: string; min: number; max: number; count: number }[];
 }) {
-  const router = useRouter();
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -281,12 +277,7 @@ function DistributionChart({
           <Bar
             dataKey="count"
             radius={[6, 6, 0, 0]}
-            onClick={(d) => {
-              if (d && typeof d.min === "number") {
-                router.push(`/vault?scoreMin=${d.min}&scoreMax=${d.max}`);
-              }
-            }}
-            cursor="pointer"
+            // /vault is gone — distribution bars are now display-only.
           >
             {data.map((d, i) => {
               const v =

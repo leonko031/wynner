@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { geminiProJSON, isGeminiAvailable } from "@/lib/ai/gemini";
+import { geminiFlashJSON, isGeminiAvailable } from "@/lib/ai/gemini";
 import {
   buildStrategicBriefPrompt,
   type StrategicBriefContext,
@@ -17,7 +17,10 @@ import type { Profile } from "@/types/profile";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BRIEF_COST = 5;
+// Brief runs on Gemini Flash now (was Pro). Pro added depth but doubled
+// latency and cost — Flash gives the user a usable brief in ~2-3 seconds at
+// 1/5 the credit price.
+const BRIEF_COST = 1;
 
 const bodySchema = z.object({
   scans: z.array(compactScanSchema).max(120),
@@ -27,12 +30,16 @@ const bodySchema = z.object({
   periodEnd: z.string(),
   operatorLevel: z.number().int().min(0).max(100),
   operatorTier: z.string().min(1),
-  testingCount: z.number().int().min(0),
-  wonCount: z.number().int().min(0),
-  killedCount: z.number().int().min(0),
-  watchlistCount: z.number().int().min(0),
+  favoritesCount: z.number().int().min(0),
   comparisonsCount: z.number().int().min(0),
   regenerate: z.boolean().optional(),
+  /**
+   * Read-only mode. When true, return the cached brief if one exists, or 204
+   * with { cached: false, brief: null } if not. Never spends credits, never
+   * calls Gemini. This is what the page uses on initial mount so /insights
+   * stays free to open.
+   */
+  cacheOnly: z.boolean().optional(),
 });
 
 type Payload = {
@@ -140,6 +147,13 @@ export async function POST(req: Request) {
         });
       }
     }
+    // Cache miss + cacheOnly request → bail without charging.
+    if (body.cacheOnly) {
+      return NextResponse.json(
+        { brief: null, cached: false, cost: 0, briefId: null },
+        { status: 200 },
+      );
+    }
   }
 
   // -------------------- Charge credits up front -----------------------------
@@ -166,16 +180,13 @@ export async function POST(req: Request) {
     periodEnd: body.periodEnd,
     operatorLevel: body.operatorLevel,
     operatorTier: body.operatorTier,
-    testingCount: body.testingCount,
-    wonCount: body.wonCount,
-    killedCount: body.killedCount,
-    watchlistCount: body.watchlistCount,
+    favoritesCount: body.favoritesCount,
     comparisonsCount: body.comparisonsCount,
   };
 
   let brief: StrategicBrief;
   try {
-    const raw = await geminiProJSON<unknown>(buildStrategicBriefPrompt(ctx));
+    const raw = await geminiFlashJSON<unknown>(buildStrategicBriefPrompt(ctx));
     const parsed = strategicBriefSchema.safeParse(raw);
     if (!parsed.success) {
       await refund(supabase, user.id, isAdmin, BRIEF_COST);

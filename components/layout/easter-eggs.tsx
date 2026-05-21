@@ -169,7 +169,6 @@ export function EasterEggs() {
             <div className="grid grid-cols-2 gap-2 font-mono text-xs">
               <Stat label="products" value={productsCount} />
               <Stat label="favorites" value={favoritesCount} />
-              <Stat label="vault layout" value={prefs.vaultLayout} />
               <Stat label="compact mode" value={String(prefs.compactMode)} />
               <Stat label="prefer pro" value={String(prefs.preferProModel)} />
               <Stat label="premium cursor" value={String(prefs.premiumCursor)} />

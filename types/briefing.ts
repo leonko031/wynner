@@ -16,7 +16,7 @@ export const briefingChipSchema = z.object({
    * Action the chip routes to. Constrained to known patterns so we never
    * inject random URLs into Link components.
    */
-  action: z.enum(["filter_niche", "filter_country", "open_scan", "open_vault", "info"]),
+  action: z.enum(["filter_niche", "filter_country", "open_scan", "info"]),
   /** Value associated with the action (niche key, country code, etc.). */
   value: z.string().optional(),
 });
@@ -32,7 +32,7 @@ export const editorialRecommendationSchema = z.object({
   /** 1-paragraph rationale, ~3 sentences. */
   rationale: z.string().min(20).max(600),
   /** Action type — drives the visual on the right of the card. */
-  actionType: z.enum(["scan", "deepResearch", "compare", "vault"]),
+  actionType: z.enum(["scan", "deepResearch", "compare"]),
   /** Free-form context for the visual (niche/country/products etc.). */
   actionContext: z.string().max(160).optional(),
 });
@@ -69,7 +69,7 @@ export function fallbackBriefing(firstName: string): DailyBriefing {
     ],
     chips: [
       { label: "Run a scan", emoji: "✨", action: "open_scan" },
-      { label: "Browse vault", emoji: "📚", action: "open_vault" },
+      { label: "Compare picks", emoji: "⚖️", action: "info" },
       { label: "Steady market", emoji: "🌤️", action: "info" },
     ],
     editorialTitle: "A quiet morning to scan",
