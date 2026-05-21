@@ -591,9 +591,6 @@ function PricingPdfPage({ report, pageNumber, totalPages, date }: { report: Deep
  * -------------------------------------------------------------------------- */
 function AnglesPdfPage({ report, pageNumber, totalPages, date }: { report: DeepResearchReport; pageNumber: number; totalPages: number; date: string }) {
   if (report.adAngles.length === 0) return null;
-  // Chunk into groups of 3 — render the first page here, additional pages by extending if needed.
-  // For simplicity in v1 we render up to 3 on this page; spec calls for spillover but
-  // 6 angles × short cards fits okay if we keep them tight.
   const angles = report.adAngles.slice(0, 6);
   return (
     <Page size="A4" style={styles.page}>
@@ -630,6 +627,177 @@ function AnglesPdfPage({ report, pageNumber, totalPages, date }: { report: DeepR
                 </Text>
               </View>
             </PdfCard>
+          );
+        })}
+      </View>
+      <PdfFooter pageNumber={pageNumber} totalPages={totalPages} date={date} />
+    </Page>
+  );
+}
+
+/* --------------------------------------------------------------------------
+ * Hook Angles pages (NEW grounded engine output) — chunked 4 per page
+ * -------------------------------------------------------------------------- */
+function HookAnglesPdfPage({
+  report,
+  angles,
+  pageNumber,
+  totalPages,
+  date,
+  pageIndex,
+}: {
+  report: DeepResearchReport;
+  angles: NonNullable<DeepResearchReport["hookAngles"]>;
+  pageNumber: number;
+  totalPages: number;
+  date: string;
+  pageIndex: number;
+}) {
+  void report;
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader title={pageIndex === 0 ? "The angles" : `The angles (cont.)`} />
+      <Text style={styles.sectionTitle}>
+        {pageIndex === 0 ? `${angles.length} hooks ranked by predicted impact` : ""}
+      </Text>
+      <View style={{ flexDirection: "column", gap: 8 }}>
+        {angles.map((a) => {
+          const aColor =
+            a.awarenessLevel === "unaware" ? PDF_COLORS.auroraBlue
+              : a.awarenessLevel === "problem-aware" ? PDF_COLORS.auroraPurple
+              : a.awarenessLevel === "solution-aware" ? PDF_COLORS.auroraPink
+              : a.awarenessLevel === "product-aware" ? PDF_COLORS.test
+              : PDF_COLORS.go;
+          return (
+            <PdfCard key={a.id}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+                <Text style={{ fontFamily: PDF_FONTS.serifBold, fontSize: 12, color: PDF_COLORS.inkPrimary }}>
+                  #{a.rank} · {a.emotionalDriver}
+                </Text>
+                <PdfBadge color={aColor}>{a.awarenessLevel}</PdfBadge>
+              </View>
+              <Text style={[pdfText.body, { fontStyle: "italic", fontSize: 11, marginTop: 4, fontFamily: PDF_FONTS.serif }]}>
+                “{a.primaryHook}”
+              </Text>
+              <View style={{ marginTop: 5 }}>
+                <Text style={[pdfText.body, { marginTop: 2, fontSize: 9 }]}>
+                  <Text style={[pdfText.tableHeader, { fontSize: 8 }]}>OPEN     </Text>{a.scriptStructure.opening}
+                </Text>
+                <Text style={[pdfText.body, { marginTop: 2, fontSize: 9 }]}>
+                  <Text style={[pdfText.tableHeader, { fontSize: 8 }]}>PROBLEM  </Text>{a.scriptStructure.problem}
+                </Text>
+                <Text style={[pdfText.body, { marginTop: 2, fontSize: 9 }]}>
+                  <Text style={[pdfText.tableHeader, { fontSize: 8 }]}>SOLUTION </Text>{a.scriptStructure.solution}
+                </Text>
+                <Text style={[pdfText.body, { marginTop: 2, fontSize: 9 }]}>
+                  <Text style={[pdfText.tableHeader, { fontSize: 8 }]}>CTA      </Text>{a.scriptStructure.cta}
+                </Text>
+              </View>
+              {a.whyThisWorks && (
+                <Text style={[pdfText.bodyMuted, { fontSize: 8, marginTop: 5 }]}>
+                  Why: {a.whyThisWorks}
+                </Text>
+              )}
+            </PdfCard>
+          );
+        })}
+      </View>
+      <PdfFooter pageNumber={pageNumber} totalPages={totalPages} date={date} />
+    </Page>
+  );
+}
+
+/* --------------------------------------------------------------------------
+ * Sources page — full citation list at the back of the report
+ * -------------------------------------------------------------------------- */
+function SourcesPdfPage({ report, pageNumber, totalPages, date }: { report: DeepResearchReport; pageNumber: number; totalPages: number; date: string }) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader title="Sources" />
+      <Text style={styles.sectionTitle}>
+        {report.sources.length} web source{report.sources.length === 1 ? "" : "s"} consulted
+      </Text>
+      <View style={{ flexDirection: "column", gap: 4 }}>
+        {report.sources.map((src) => (
+          <View key={src.index} style={{ flexDirection: "row", alignItems: "baseline" }}>
+            <Text style={{ fontFamily: PDF_FONTS.mono, fontSize: 8, color: PDF_COLORS.inkWhisper, width: 24 }}>
+              [{src.index + 1}]
+            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: PDF_FONTS.sansBold, fontSize: 9, color: PDF_COLORS.inkPrimary }}>
+                {src.domain}
+              </Text>
+              <Text style={{ fontFamily: PDF_FONTS.sans, fontSize: 8, color: PDF_COLORS.inkSoft }}>
+                {src.title}
+              </Text>
+              <Text style={{ fontFamily: PDF_FONTS.mono, fontSize: 7, color: PDF_COLORS.auroraBlue, marginTop: 1 }}>
+                {src.uri}
+              </Text>
+            </View>
+          </View>
+        ))}
+        {report.sources.length === 0 && (
+          <Text style={[pdfText.bodyMuted, { fontStyle: "italic" }]}>
+            This scan ran without web grounding (GEMINI_GROUNDING_ENABLED=false or all
+            grounded calls failed). No sources to cite.
+          </Text>
+        )}
+      </View>
+      {report.searchQueriesRun.length > 0 && (
+        <View style={{ marginTop: 12 }}>
+          <Text style={[pdfText.tableHeader, { fontSize: 9, marginBottom: 4 }]}>
+            SEARCH QUERIES RUN ({report.searchQueriesRun.length})
+          </Text>
+          {report.searchQueriesRun.map((q, i) => (
+            <Text key={i} style={[pdfText.bodyMuted, { fontFamily: PDF_FONTS.mono, fontSize: 8 }]}>
+              · {q}
+            </Text>
+          ))}
+        </View>
+      )}
+      <PdfFooter pageNumber={pageNumber} totalPages={totalPages} date={date} />
+    </Page>
+  );
+}
+
+/* --------------------------------------------------------------------------
+ * Angle cheat sheet — 1-page tear-out summary
+ * -------------------------------------------------------------------------- */
+function AngleCheatSheetPdfPage({ report, pageNumber, totalPages, date }: { report: DeepResearchReport; pageNumber: number; totalPages: number; date: string }) {
+  const angles = report.hookAngles;
+  if (!angles || angles.length === 0) return null;
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader title="Angle cheat sheet" />
+      <Text style={styles.sectionTitle}>Tear-out: every angle at a glance</Text>
+      <View style={{ flexDirection: "column", gap: 4 }}>
+        {angles.map((a) => {
+          const topPlatform = (["meta", "tiktok", "youtube", "googleAds"] as const)
+            .map((p) => ({ p, score: a.platformFit[p].score }))
+            .sort((x, y) => y.score - x.score)[0];
+          return (
+            <View
+              key={a.id}
+              style={{
+                flexDirection: "row",
+                alignItems: "baseline",
+                paddingVertical: 4,
+                borderBottomWidth: 0.5,
+                borderColor: PDF_COLORS.borderSoft,
+              }}
+            >
+              <Text style={{ fontFamily: PDF_FONTS.serifBold, fontSize: 12, width: 22, color: PDF_COLORS.inkPrimary }}>
+                #{a.rank}
+              </Text>
+              <View style={{ flex: 1, paddingLeft: 6 }}>
+                <Text style={{ fontFamily: PDF_FONTS.serif, fontStyle: "italic", fontSize: 10, color: PDF_COLORS.inkPrimary }}>
+                  “{a.primaryHook}”
+                </Text>
+                <Text style={{ fontFamily: PDF_FONTS.mono, fontSize: 7, color: PDF_COLORS.inkSoft, marginTop: 1 }}>
+                  {a.awarenessLevel.toUpperCase()} · {a.emotionalDriver.toUpperCase()} · {topPlatform.p.toUpperCase()} ({topPlatform.score}/100)
+                </Text>
+              </View>
+            </View>
           );
         })}
       </View>
@@ -868,13 +1036,42 @@ export function ResearchPdfDocument({ report, watermark }: ResearchPdfProps) {
   if (report.pricingStrategy) {
     builders.push((pn, tp) => <PricingPdfPage key="pricing" report={report} pageNumber={pn} totalPages={tp} date={date} />);
   }
-  if (report.adAngles.length > 0) {
+  // Prefer the new hookAngles (grounded engine output). Falls back to the
+  // legacy adAngles render for older reports.
+  if (report.hookAngles && report.hookAngles.length > 0) {
+    const PER_PAGE = 4;
+    const chunks: typeof report.hookAngles[] = [];
+    for (let i = 0; i < report.hookAngles.length; i += PER_PAGE) {
+      chunks.push(report.hookAngles.slice(i, i + PER_PAGE));
+    }
+    chunks.forEach((chunk, idx) => {
+      builders.push((pn, tp) => (
+        <HookAnglesPdfPage
+          key={`hookangles-${idx}`}
+          report={report}
+          angles={chunk}
+          pageNumber={pn}
+          totalPages={tp}
+          date={date}
+          pageIndex={idx}
+        />
+      ));
+    });
+  } else if (report.adAngles.length > 0) {
     builders.push((pn, tp) => <AnglesPdfPage key="angles" report={report} pageNumber={pn} totalPages={tp} date={date} />);
   }
   if (report.launchPlaybook) {
     builders.push((pn, tp) => <PlaybookPdfPage key="playbook" report={report} pageNumber={pn} totalPages={tp} date={date} />);
   }
   builders.push((pn, tp) => <RiskVerdictPage key="verdict" report={report} pageNumber={pn} totalPages={tp} date={date} watermark={watermark} />);
+  // Cheat sheet (tear-out) — only for new reports with hookAngles
+  if (report.hookAngles && report.hookAngles.length > 0) {
+    builders.push((pn, tp) => <AngleCheatSheetPdfPage key="cheatsheet" report={report} pageNumber={pn} totalPages={tp} date={date} />);
+  }
+  // Sources page — last page if any sources exist
+  if (report.sources && report.sources.length > 0) {
+    builders.push((pn, tp) => <SourcesPdfPage key="sources" report={report} pageNumber={pn} totalPages={tp} date={date} />);
+  }
 
   const totalPages = 1 + builders.length; // +1 for cover
   builders.forEach((b, i) => {
