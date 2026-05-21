@@ -425,6 +425,14 @@ export async function* runDeepResearch(
       durationMs: Date.now() - startedAt,
       fallbacksTriggered,
     },
+    // Grounding fields — populated by the new 3-phase engine; the legacy
+    // path here returns empty/defaults so the type-check passes during the
+    // transition. The new engine (next commit) replaces this whole function.
+    hookAngles: [],
+    sources: [],
+    searchQueriesRun: [],
+    groundingQualityScore: 0,
+    ungroundedFallback: true,
   };
 
   yield { type: "research_completed", reportId: report.id };

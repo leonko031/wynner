@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import type { GroundingSource } from "./grounding";
 
 /* -------------------------------------------------------------------------- */
 /* Common primitives                                                          */
@@ -110,6 +111,8 @@ export const personaSchema = z.object({
   realQuoteStyle: z.string(),
   avatarDescription: z.string(),
   confidenceLevel: confidenceLevelSchema,
+  /** Indices into the report-level sources array — for citations UI. */
+  sources: z.array(z.number().int().min(0)).max(20).default([]),
 });
 export type Persona = z.infer<typeof personaSchema>;
 
@@ -141,6 +144,7 @@ export const competitorLandscapeSchema = z.object({
   }),
   marketGaps: z.array(z.string()).min(1).max(5),
   confidenceLevel: confidenceLevelSchema,
+  sources: z.array(z.number().int().min(0)).max(40).default([]),
 });
 export type CompetitorLandscape = z.infer<typeof competitorLandscapeSchema>;
 
@@ -163,11 +167,12 @@ export const pricingStrategySchema = z.object({
   bundleSuggestions: z.array(z.string()).min(1).max(4),
   priceJustification: z.string(),
   confidenceLevel: confidenceLevelSchema,
+  sources: z.array(z.number().int().min(0)).max(20).default([]),
 });
 export type PricingStrategy = z.infer<typeof pricingStrategySchema>;
 
 /* -------------------------------------------------------------------------- */
-/* Stage 6 — Ad Angles (six, mapped to personas)                              */
+/* Stage 6 — Ad Angles (legacy schema kept for back-compat with old reports)  */
 /* -------------------------------------------------------------------------- */
 
 export const adAngleSchema = z.object({
@@ -196,6 +201,79 @@ export const adAngleSetSchema = z.object({
 export type AdAngleSet = z.infer<typeof adAngleSetSchema>;
 
 /* -------------------------------------------------------------------------- */
+/* Stage 6 (new) — HookAngle: the full creative blueprint                     */
+/* -------------------------------------------------------------------------- */
+
+export const emotionalDriverSchema = z.enum([
+  "curiosity",
+  "fear",
+  "aspiration",
+  "belonging",
+  "fomo",
+  "transformation",
+  "validation",
+  "convenience",
+]);
+export type EmotionalDriver = z.infer<typeof emotionalDriverSchema>;
+
+export const platformFitEntrySchema = z.object({
+  score: score100,
+  reasoning: z.string().min(1).max(160),
+});
+
+export const hookScriptSchema = z.object({
+  opening: z.string(),
+  problem: z.string(),
+  /** Quick tier may omit agitation/proof — they're optional. */
+  agitation: z.string().optional(),
+  solution: z.string(),
+  proof: z.string().optional(),
+  cta: z.string(),
+});
+export type HookScript = z.infer<typeof hookScriptSchema>;
+
+export const hookAngleSchema = z.object({
+  id: z.string(),
+  rank: z.number().int().min(1).max(20),
+  awarenessLevel: awarenessLevelSchema,
+  emotionalDriver: emotionalDriverSchema,
+  targetPersonaId: z.string(),
+
+  primaryHook: z.string().min(8).max(220),
+  /** A/B test alternatives. Quick tier: omit. Standard: 2. Deep: 3. */
+  hookVariants: z.array(z.string()).max(4).default([]),
+
+  firstFrameDescription: z.string().min(8).max(240),
+  /** B-roll concepts. Quick tier: omit. Standard/Deep: 3. */
+  visualHookIdeas: z.array(z.string()).max(5).default([]),
+
+  scriptStructure: hookScriptSchema,
+
+  platformFit: z.object({
+    meta: platformFitEntrySchema,
+    tiktok: platformFitEntrySchema,
+    youtube: platformFitEntrySchema,
+    googleAds: platformFitEntrySchema,
+  }),
+
+  captionVariations: z.array(z.string()).min(1).max(6),
+  ctaVariations: z.array(z.string()).min(1).max(4),
+
+  whyThisWorks: z.string().min(8).max(420),
+  /** References to signals from discovery phase (string format, human readable). */
+  groundedInSignals: z.array(z.string()).max(6).default([]),
+  /** Indices into the report-level sources array. */
+  sources: z.array(z.number().int().min(0)).max(20).default([]),
+  confidence: confidenceLevelSchema,
+});
+export type HookAngle = z.infer<typeof hookAngleSchema>;
+
+export const hookAngleSetSchema = z.object({
+  angles: z.array(hookAngleSchema).min(1).max(10),
+});
+export type HookAngleSet = z.infer<typeof hookAngleSetSchema>;
+
+/* -------------------------------------------------------------------------- */
 /* Stage 7 — Launch Playbook (14-day)                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -206,6 +284,7 @@ export const dailyActionSchema = z.object({
   creativeCount: looseInt.pipe(z.number().min(0).max(20)),
   budgetSplit: z.string(),
   kpis: z.array(z.string()).min(1).max(4),
+  sources: z.array(z.number().int().min(0)).max(10).default([]),
 });
 export type DailyAction = z.infer<typeof dailyActionSchema>;
 
@@ -226,6 +305,7 @@ export const redFlagSchema = z.object({
   description: z.string(),
   severity: severitySchema,
   mitigation: z.string(),
+  sources: z.array(z.number().int().min(0)).max(10).default([]),
 });
 export type RedFlag = z.infer<typeof redFlagSchema>;
 
@@ -286,7 +366,10 @@ export interface DeepResearchReport {
   personas: Persona[];
   competitorLandscape?: CompetitorLandscape;
   pricingStrategy?: PricingStrategy;
+  /** Legacy field for older reports — new flow populates `hookAngles` instead. */
   adAngles: AdAngle[];
+  /** The new creative-blueprint angles. Per-tier count: 2 / 5 / 8. */
+  hookAngles: HookAngle[];
   launchPlaybook?: LaunchPlaybook;
   riskAnalysis?: RiskAnalysis;
   finalVerdict: FinalVerdict;
@@ -297,21 +380,60 @@ export interface DeepResearchReport {
     durationMs: number;
     fallbacksTriggered: string[];
   };
+  /* ----- Grounding metadata (new) ----- */
+  /** Consolidated + deduplicated source list from all phase 1 calls. */
+  sources: GroundingSource[];
+  /** Every Google query Gemini executed during this scan. */
+  searchQueriesRun: string[];
+  /** 0-100 grounding quality score — drives the badge near the verdict. */
+  groundingQualityScore: number;
+  /** True when GEMINI_GROUNDING_ENABLED=false or all grounded calls fell back. */
+  ungroundedFallback: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
 /* Progress events streamed by the orchestrator                               */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Stage ids — kept aligned with the per-tier card layouts in the live
+ * research UI. The new 3-phase pipeline maps each stage to a phase:
+ *   • Phase 1 (discovery)  → quick_signals, landscape, voice, competitors,
+ *                             trends, country_context
+ *   • Phase 2 (synthesis)  → personas, hook_angles, pricing, competition,
+ *                             risk, launch_playbook
+ *   • Phase 3 (verdict)    → final_verdict
+ *
+ * Older stage ids (product_intelligence, ad_angles, risk_verdict, etc.)
+ * are kept for back-compat with stored reports and the old prompts.
+ */
 export type ResearchStageId =
+  // Phase 1 — discovery (grounded)
+  | "quick_signals"
+  | "landscape"
+  | "voice"
+  | "competitors_discovery"
+  | "trends"
+  | "country_context"
+  // Phase 2 — synthesis
+  | "personas"
+  | "hook_angles"
+  | "pricing"
+  | "competition_synthesis"
+  | "risk"
+  | "launch_playbook"
+  // Phase 3 — verdict
+  | "final_verdict"
+  // Legacy (old reports' stages — keep for back-compat)
   | "product_intelligence"
   | "market_analysis"
   | "persona_synthesis"
   | "competitor_landscape"
   | "pricing_strategy"
   | "ad_angles"
-  | "launch_playbook"
   | "risk_verdict";
+
+export type ResearchPhase = 1 | 2 | 3;
 
 export type ResearchProgressEvent =
   | { type: "stage_started"; stage: ResearchStageId; label: string }
@@ -328,6 +450,16 @@ export type ResearchProgressEvent =
       error: string;
       usedFallback: boolean;
     }
+  | { type: "phase_started"; phase: ResearchPhase }
+  | { type: "phase_completed"; phase: ResearchPhase }
+  | { type: "search_query_started"; query: string; stage: ResearchStageId }
+  | {
+      type: "search_query_completed";
+      query: string;
+      resultCount: number;
+      stage: ResearchStageId;
+    }
+  | { type: "source_discovered"; source: GroundingSource; stage: ResearchStageId }
   | { type: "research_completed"; reportId: string }
   | { type: "research_failed"; error: string };
 
@@ -335,64 +467,152 @@ export type ResearchProgressEvent =
 /* Depth selector metadata — referenced by UI + orchestrator                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Per-tier research configuration. Each mode declares:
+ *   • discoveryStages  — which Phase 1 (grounded) calls to run in parallel
+ *   • synthesisStages  — which Phase 2 calls to run in parallel after Phase 1
+ *   • angleCount       — how many HookAngles to ask for
+ *   • personaCount     — how many personas to ask for
+ *   • Phase 3 always runs final_verdict.
+ */
 export const RESEARCH_MODE_META: Record<
   ResearchMode,
   {
     label: string;
     creditCost: number;
     estimatedSeconds: number;
-    stages: ResearchStageId[];
-    /** How many personas to ask for in the persona-synthesis call. */
+    /** Phase 1 — grounded web research, all in parallel. */
+    discoveryStages: ResearchStageId[];
+    /** Phase 2 — synthesis stages, all in parallel after Phase 1. */
+    synthesisStages: ResearchStageId[];
+    angleCount: 2 | 5 | 8;
     personaCount: 1 | 2 | 3;
+    /** Model preference for grounded calls. Deep gets Pro for stronger grounding. */
+    groundingModel: "flash" | "pro";
+    /** Whether the new HookAngle synthesis runs on Pro or Flash. */
+    angleModel: "flash" | "pro";
+    /** Legacy stages array — kept so old UI bits that read .stages don't crash. */
+    stages: ResearchStageId[];
   }
 > = {
   quick: {
     label: "Quick Scan",
     creditCost: 1,
-    estimatedSeconds: 10,
-    stages: ["product_intelligence", "persona_synthesis", "risk_verdict"],
+    estimatedSeconds: 15,
+    discoveryStages: ["quick_signals"],
+    synthesisStages: ["personas", "hook_angles"],
+    angleCount: 2,
     personaCount: 1,
+    groundingModel: "flash",
+    angleModel: "flash",
+    stages: ["quick_signals", "personas", "hook_angles", "final_verdict"],
   },
   standard: {
     label: "Standard Scan",
     creditCost: 4,
-    estimatedSeconds: 25,
-    stages: [
-      "product_intelligence",
-      "market_analysis",
-      "persona_synthesis",
-      "competitor_landscape",
-      "pricing_strategy",
-      "ad_angles",
-      "risk_verdict",
-    ],
+    estimatedSeconds: 35,
+    discoveryStages: ["landscape", "voice", "competitors_discovery"],
+    synthesisStages: ["personas", "hook_angles", "pricing", "competition_synthesis"],
+    angleCount: 5,
     personaCount: 3,
+    groundingModel: "flash",
+    angleModel: "pro",
+    stages: [
+      "landscape",
+      "voice",
+      "competitors_discovery",
+      "personas",
+      "hook_angles",
+      "pricing",
+      "competition_synthesis",
+      "final_verdict",
+    ],
   },
   deep: {
     label: "Deep Research",
     creditCost: 9,
-    estimatedSeconds: 60,
-    stages: [
-      "product_intelligence",
-      "market_analysis",
-      "persona_synthesis",
-      "competitor_landscape",
-      "pricing_strategy",
-      "ad_angles",
-      "launch_playbook",
-      "risk_verdict",
+    estimatedSeconds: 75,
+    discoveryStages: [
+      "landscape",
+      "voice",
+      "competitors_discovery",
+      "trends",
+      "country_context",
     ],
+    synthesisStages: [
+      "personas",
+      "hook_angles",
+      "pricing",
+      "competition_synthesis",
+      "risk",
+      "launch_playbook",
+    ],
+    angleCount: 8,
     personaCount: 3,
+    groundingModel: "pro",
+    angleModel: "pro",
+    stages: [
+      "landscape",
+      "voice",
+      "competitors_discovery",
+      "trends",
+      "country_context",
+      "personas",
+      "hook_angles",
+      "pricing",
+      "competition_synthesis",
+      "risk",
+      "launch_playbook",
+      "final_verdict",
+    ],
   },
 };
 
 export const STAGE_LABELS: Record<ResearchStageId, string> = {
+  // New
+  quick_signals: "Quick signals",
+  landscape: "Product landscape",
+  voice: "Customer voice",
+  competitors_discovery: "Competitor intelligence",
+  trends: "Trend signals",
+  country_context: "Country context",
+  personas: "Personas",
+  hook_angles: "Hook angles",
+  pricing: "Pricing strategy",
+  competition_synthesis: "Competitor landscape",
+  risk: "Risks & launch plan",
+  launch_playbook: "14-day playbook",
+  final_verdict: "Final verdict",
+  // Legacy
   product_intelligence: "Product intelligence",
   market_analysis: "Market analysis",
   persona_synthesis: "Customer avatars",
   competitor_landscape: "Competitive landscape",
   pricing_strategy: "Pricing strategy",
   ad_angles: "Ad angles",
-  launch_playbook: "14-day playbook",
   risk_verdict: "Risk & verdict",
+};
+
+/** Phase number for each stage — drives the live UI's grouping. */
+export const STAGE_PHASE: Record<ResearchStageId, ResearchPhase> = {
+  quick_signals: 1,
+  landscape: 1,
+  voice: 1,
+  competitors_discovery: 1,
+  trends: 1,
+  country_context: 1,
+  personas: 2,
+  hook_angles: 2,
+  pricing: 2,
+  competition_synthesis: 2,
+  risk: 2,
+  launch_playbook: 2,
+  final_verdict: 3,
+  product_intelligence: 1,
+  market_analysis: 1,
+  persona_synthesis: 2,
+  competitor_landscape: 1,
+  pricing_strategy: 2,
+  ad_angles: 2,
+  risk_verdict: 3,
 };

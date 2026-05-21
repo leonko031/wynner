@@ -71,6 +71,7 @@ export function fallbackPersonas(count: 1 | 2 | 3): Persona[] {
     realQuoteStyle: "anyone tried this? looks too good to be true",
     avatarDescription: "Tired but stylish adult in casual clothes.",
     confidenceLevel: "low",
+    sources: [],
   };
   return Array.from({ length: count }, (_, i) => ({
     ...base,
@@ -100,6 +101,7 @@ export function fallbackCompetitors(): CompetitorLandscape {
     pricingBenchmarks: { lowEnd: 14, midRange: 29, premium: 49 },
     marketGaps: ["Underserved demographic segment", "Better-told problem-aware angle"],
     confidenceLevel: "low",
+    sources: [],
   };
 }
 
@@ -115,6 +117,7 @@ export function fallbackPricing(price: number): PricingStrategy {
     bundleSuggestions: ["Buy 2 get 1 free"],
     priceJustification: "Anchored to mid-market, with a popular tier matched to category AOV.",
     confidenceLevel: "low",
+    sources: [],
   };
 }
 
@@ -145,6 +148,7 @@ export function fallbackPlaybook(price: number): LaunchPlaybook {
     creativeCount: i < 3 ? 5 : i < 7 ? 3 : 2,
     budgetSplit: "$120 — 80% Meta / 20% TikTok",
     kpis: ["CTR", "CPA", "ROAS"],
+    sources: [],
   }));
   return {
     totalDays: 14,
@@ -162,6 +166,7 @@ export function fallbackRisk(): RiskAnalysis {
         description: "Insufficient evidence to fully assess this product.",
         severity: "medium",
         mitigation: "Run a small $300 creative test to gather real CTR/CPA data before scaling.",
+        sources: [],
       },
     ],
     confidenceLevel: "low",
