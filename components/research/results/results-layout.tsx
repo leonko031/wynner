@@ -9,6 +9,8 @@ import { MarketDeepDive } from "./market-deep-dive";
 import { CompetitiveLandscape } from "./competitive-landscape";
 import { PricingStrategySection } from "./pricing-strategy";
 import { SixAngles } from "./six-angles";
+import { HookAnglesSection } from "./hook-angles";
+import { SourcesPanel } from "./sources-panel";
 import { LaunchPlaybookSection } from "./launch-playbook";
 import { RiskAnalysisSection } from "./risk-analysis";
 import { FinalVerdictSection } from "./final-verdict";
@@ -34,14 +36,22 @@ export function ResultsLayout({
     >
       <ResultsHero report={report} fresh={fresh} />
       <ExecutiveSummary report={report} />
+      {/* New centerpiece — only renders when hookAngles is populated (new
+          grounded engine). Older reports keep showing the legacy SixAngles
+          via the fallthrough below. */}
+      {report.hookAngles && report.hookAngles.length > 0 ? (
+        <HookAnglesSection report={report} />
+      ) : (
+        <SixAngles report={report} />
+      )}
       <CustomerAvatars report={report} />
       <MarketDeepDive report={report} />
       <CompetitiveLandscape report={report} />
       <PricingStrategySection report={report} />
-      <SixAngles report={report} />
       <LaunchPlaybookSection report={report} />
       <RiskAnalysisSection report={report} />
       <FinalVerdictSection report={report} />
+      <SourcesPanel report={report} />
       <MethodologyFooter report={report} />
     </motion.main>
   );

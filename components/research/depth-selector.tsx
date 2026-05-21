@@ -25,19 +25,25 @@ const CARDS: CardSpec[] = [
     mode: "quick",
     icon: Zap,
     accent: "#5B8DFF",
-    bullets: ["Sell score & verdict", "Top creative angle", "One customer persona", "Risk red flags"],
+    bullets: [
+      "🔍 Live web research (4–6 searches)",
+      "📊 2 hook angles with full scripts",
+      "👤 1 persona sketch",
+      "📚 ~10 cited sources",
+      "Sell score, verdict, top angle",
+    ],
   },
   {
     mode: "standard",
     icon: Sparkles,
     accent: "#A788FF",
     bullets: [
-      "Everything in Quick",
-      "Three distinct customer avatars",
-      "Country-fit deep dive",
-      "Five ad angles + scripts",
-      "Competitive landscape",
-      "Pricing strategy",
+      "🔍 Deep web research (15–20 searches)",
+      "📊 5 fully-detailed hook angles + A/B variants",
+      "👤 3 buyer personas with real language patterns",
+      "🏷️ Real competitor analysis",
+      "💰 Pricing strategy with tiered ladder",
+      "📚 ~30 cited sources",
     ],
     ribbon: "popular",
   },
@@ -46,14 +52,15 @@ const CARDS: CardSpec[] = [
     icon: FlaskConical,
     accent: "#FF89C5",
     bullets: [
-      "Everything in Standard",
-      "14-day launch playbook",
-      "Six ad angles + scripts",
-      "Risk analysis with mitigations",
-      "Comparable past winners",
-      "Branded PDF report",
-      "Email delivery",
-      "Pro-model reasoning",
+      "🔍 Comprehensive web research (30–40 searches)",
+      "📊 8 hook angles across all awareness levels",
+      "👤 3 detailed personas with real customer quotes",
+      "🏷️ Full competitor landscape with archetypes",
+      "💰 Pricing tier strategy",
+      "📅 14-day launch playbook",
+      "⚠️ Risk analysis with mitigations",
+      "📄 Branded PDF report",
+      "📚 ~80 cited sources",
     ],
     ribbon: "pdf",
   },
@@ -79,7 +86,8 @@ export function DepthSelector({ onSelect }: Props) {
           transition={{ duration: 0.4, delay: 0.05 }}
           className="mx-auto mt-3 max-w-xl text-sm text-text-muted md:text-base"
         >
-          Pick your depth. You can always go deeper later.
+          Pick your depth. Every scan uses real-time web research with cited
+          sources — pick how thorough.
         </motion.p>
       </header>
 

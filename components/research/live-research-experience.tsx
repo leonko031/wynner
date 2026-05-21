@@ -21,6 +21,8 @@ import { COUNTRIES } from "@/lib/data/countries";
 import { AiOrb } from "./ai-orb";
 import { LiveThinkingFeed } from "./live-thinking-feed";
 import { StageProgressCard, type StageState } from "./stage-progress-card";
+import type { GroundingSource } from "@/types/grounding";
+import { ExternalLink } from "lucide-react";
 
 export type LiveResearchInput = {
   mode: ResearchMode;
@@ -62,6 +64,11 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
     meta.stages.map((id) => ({ id, status: "pending" as const })),
   );
   const [thoughts, setThoughts] = useState<Thought[]>([]);
+  /** Live count of distinct sources discovered across all phase-1 calls. */
+  const [discoveredSources, setDiscoveredSources] = useState<GroundingSource[]>([]);
+  /** Distinct grounded search queries the engine has fired. */
+  const [runQueries, setRunQueries] = useState<Set<string>>(new Set());
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
@@ -190,6 +197,49 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
     }
 
     function onProgress(ev: ResearchProgressEvent) {
+      // Phase events — sentinels in the thinking feed.
+      if (ev.type === "phase_started") {
+        const label =
+          ev.phase === 1 ? "Phase 1 — researching the web" :
+          ev.phase === 2 ? "Phase 2 — synthesizing findings" :
+          "Phase 3 — computing verdict";
+        setThoughts((prev) => [...prev, { id: nanoid(6), text: label }]);
+        return;
+      }
+      if (ev.type === "phase_completed") {
+        return; // no-op, the next phase's start covers it
+      }
+
+      // Search-query + source events — real-time grounded research signal.
+      if (ev.type === "search_query_started") {
+        setRunQueries((prev) => {
+          if (prev.has(ev.query)) return prev;
+          const next = new Set(prev);
+          next.add(ev.query);
+          return next;
+        });
+        setThoughts((prev) => [
+          ...prev,
+          { id: nanoid(6), text: `🔍 Searching: "${ev.query}"` },
+        ]);
+        return;
+      }
+      if (ev.type === "search_query_completed") {
+        // Already had a started message — skip duplicate noise.
+        return;
+      }
+      if (ev.type === "source_discovered") {
+        setDiscoveredSources((prev) => {
+          if (prev.some((s) => s.uri === ev.source.uri)) return prev;
+          return [...prev, ev.source];
+        });
+        setThoughts((prev) => [
+          ...prev,
+          { id: nanoid(6), text: `📄 Reading: ${ev.source.domain}` },
+        ]);
+        return;
+      }
+
       if ("stage" in ev) {
         const stageId = ev.stage as ResearchStageId;
         setStages((prev) =>
@@ -226,7 +276,7 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
         if (ev.type === "stage_started") {
           setThoughts((prev) => [
             ...prev,
-            { id: nanoid(6), text: `Starting ${STAGE_LABELS[ev.stage as ResearchStageId].toLowerCase()}…` },
+            { id: nanoid(6), text: `⏵ ${STAGE_LABELS[ev.stage as ResearchStageId]}` },
           ]);
         }
       }
@@ -371,10 +421,59 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
             {/* Thinking feed */}
             <div className="mt-6">
               <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-text-dim">
-                Live thinking
+                Live research
               </div>
               <LiveThinkingFeed thoughts={thoughts} />
             </div>
+
+            {/* Sources counter + collapsible list */}
+            {(discoveredSources.length > 0 || runQueries.size > 0) && (
+              <div className="mt-4 rounded-2xl border border-border-soft bg-surface/50 p-3">
+                <button
+                  type="button"
+                  onClick={() => setSourcesOpen((o) => !o)}
+                  className="flex w-full items-center justify-between text-xs text-text-muted hover:text-text"
+                >
+                  <span>
+                    <span className="font-mono tabular-nums text-text">
+                      {discoveredSources.length}
+                    </span>{" "}
+                    source{discoveredSources.length === 1 ? "" : "s"} ·{" "}
+                    <span className="font-mono tabular-nums text-text">
+                      {runQueries.size}
+                    </span>{" "}
+                    quer{runQueries.size === 1 ? "y" : "ies"}
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-wider">
+                    {sourcesOpen ? "hide" : "show"}
+                  </span>
+                </button>
+                {sourcesOpen && (
+                  <ul className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1">
+                    {discoveredSources.slice(-20).reverse().map((src) => (
+                      <li key={src.uri} className="flex items-center gap-2 text-[11px]">
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${src.domain}&sz=32`}
+                          alt=""
+                          width={12}
+                          height={12}
+                          className="h-3 w-3 rounded-sm"
+                        />
+                        <span className="truncate text-text-muted">{src.domain}</span>
+                        <a
+                          href={src.uri}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="ml-auto text-text-dim hover:text-text"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

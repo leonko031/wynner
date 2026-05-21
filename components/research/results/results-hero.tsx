@@ -6,6 +6,7 @@ import { Download, Mail, MessageCircleQuestion, Share2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ScoreNumber } from "@/components/animated/score-number";
+import { GroundingBadge } from "./grounding-badge";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -103,6 +104,7 @@ export function ResultsHero({ report, fresh }: Props) {
           >
             {verdict.label}
           </span>
+          <GroundingBadge report={report} />
         </div>
 
         <p className="max-w-prose text-sm leading-relaxed text-text-muted md:text-base">
