@@ -25,12 +25,33 @@ const GROUPS: Group[] = [
     title: "Navigation",
     items: [
       { keys: ["S"], label: "Start a new scan" },
-      { keys: ["V"], label: "Open vault" },
       { keys: ["C"], label: "Open compare" },
+      { keys: ["I"], label: "Open insights" },
       { keys: ["⌘", "1"], label: "Dashboard" },
-      { keys: ["⌘", "2"], label: "Vault" },
-      { keys: ["⌘", "3"], label: "Compare" },
+      { keys: ["⌘", "2"], label: "Compare" },
+      { keys: ["⌘", "3"], label: "Insights" },
       { keys: ["⌘", "4"], label: "Scan" },
+    ],
+  },
+  {
+    title: "Dashboard",
+    items: [
+      { keys: ["Space"], label: "Scroll past first fold (when at top)" },
+      { keys: ["⇧", "1"], label: "Jump to briefing" },
+      { keys: ["⇧", "2"], label: "Jump to picks" },
+      { keys: ["⇧", "3"], label: "Jump to operator pulse" },
+      { keys: ["⇧", "4"], label: "Jump to trail" },
+      { keys: ["⇧", "5"], label: "Jump to next move" },
+      { keys: ["⇧", "B"], label: "Regenerate today's briefing" },
+      { keys: ["⇧", "N"], label: "Trigger today's recommended action" },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { keys: ["⇧", "T"], label: "Cycle time period" },
+      { keys: ["⇧", "R"], label: "Regenerate strategic brief" },
+      { keys: ["⇧", "E"], label: "Export insights as PDF" },
     ],
   },
   {
@@ -40,14 +61,6 @@ const GROUPS: Group[] = [
       { keys: ["E"], label: "Export current product as PNG" },
       { keys: ["R"], label: "Re-score current product" },
       { keys: ["Esc"], label: "Back to previous page" },
-    ],
-  },
-  {
-    title: "Vault",
-    items: [
-      { keys: ["G"], label: "Grid view" },
-      { keys: ["L"], label: "List view" },
-      { keys: ["/"], label: "Focus search" },
     ],
   },
 ];

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   Flame,
@@ -212,9 +213,11 @@ export default function PricingPage() {
       {/* PLANS */}
       <section className="px-6 pb-20">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-3 md:items-center">
-          {(["starter", "pro", "operator"] as PlanTier[]).map((p) => (
-            <PlanCard key={p} plan={p} interval={interval} highlight={p === "pro"} />
-          ))}
+          {/* Suspense wrapper so useSearchParams stays inside an explicit
+              boundary (Next 16 requirement). */}
+          <Suspense fallback={null}>
+            <HighlightedPlanGrid interval={interval} />
+          </Suspense>
         </div>
       </section>
 
@@ -445,5 +448,41 @@ function IntervalChip({
       {label}
       {suffix}
     </button>
+  );
+}
+
+/**
+ * Renders the 3 plan cards and reads `?highlight={plan}` from the URL. When
+ * present, that plan card gets emphasized + the page scrolls to it on mount.
+ * Upsell modals across the app deep-link here with the target plan.
+ */
+function HighlightedPlanGrid({ interval }: { interval: BillingInterval }) {
+  const searchParams = useSearchParams();
+  const raw = (searchParams.get("highlight") ?? "").toLowerCase();
+  const highlightOverride: PlanTier | null =
+    raw === "starter" || raw === "pro" || raw === "operator" ? (raw as PlanTier) : null;
+
+  useEffect(() => {
+    if (!highlightOverride) return;
+    // Defer the scroll so layout settles first.
+    const t = window.setTimeout(() => {
+      document
+        .getElementById(`plan-${highlightOverride}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [highlightOverride]);
+
+  // Default highlight is Pro; explicit ?highlight= wins.
+  const highlighted: PlanTier = highlightOverride ?? "pro";
+
+  return (
+    <>
+      {(["starter", "pro", "operator"] as PlanTier[]).map((p) => (
+        <div key={p} id={`plan-${p}`} className="scroll-mt-24">
+          <PlanCard plan={p} interval={interval} highlight={p === highlighted} />
+        </div>
+      ))}
+    </>
   );
 }
