@@ -8,15 +8,23 @@ type Props = {
   size?: number;
   /** When true, the orb explodes into a celebration burst (used on completion). */
   celebrate?: boolean;
+  /**
+   * Fully static mode — no rotation, no pulse, no orbiting dots. Use this
+   * when the orb is decorative on a page that's not actively doing work, so
+   * the browser isn't burning paint cycles 24/7 on a card you're not looking
+   * at. Hovers and the celebrate burst still work.
+   */
+  staticIdle?: boolean;
 };
 
 /**
  * Aurora orb — a soft, breathing radial gradient sphere built entirely from
- * SVG + framer-motion. Never sits still. Drives the "Wynner is thinking..."
- * feel on the live research page.
+ * SVG + framer-motion. Default mode is animated ("Wynner is thinking…"),
+ * staticIdle silences all loops so it can sit on idle cards for free.
  */
-export function AiOrb({ intensity = 0.5, size = 220, celebrate }: Props) {
-  const reduce = useReducedMotion();
+export function AiOrb({ intensity = 0.5, size = 220, celebrate, staticIdle }: Props) {
+  const reduceFromOS = useReducedMotion();
+  const reduce = reduceFromOS || (staticIdle && !celebrate);
   const scale = 0.9 + 0.2 * intensity;
   const glow = 24 + 48 * intensity;
 

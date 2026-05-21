@@ -33,6 +33,9 @@ export function StrengthsBlindspots({
   periodEnd,
   enabled,
 }: Props) {
+  // cacheOnly: true keeps /insights mount snappy. Cache hit returns rows,
+  // miss falls back to the placeholder copy without a Gemini call. Users
+  // can trigger a fresh generation later if we wire up a manual refresh.
   const body = useMemo(
     () =>
       JSON.stringify({
@@ -41,6 +44,7 @@ export function StrengthsBlindspots({
         overallAvg,
         periodStart,
         periodEnd,
+        cacheOnly: true,
       }),
     [scansHash, scans, overallAvg, periodStart, periodEnd],
   );

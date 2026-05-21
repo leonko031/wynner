@@ -25,6 +25,8 @@ const bodySchema = z.object({
   periodStart: z.string(),
   periodEnd: z.string(),
   regenerate: z.boolean().optional(),
+  /** Read-only — cache hit returns the row, miss returns FALLBACK (no Gemini call). */
+  cacheOnly: z.boolean().optional(),
 });
 
 type Payload = {
@@ -125,6 +127,11 @@ export async function POST(req: Request) {
         });
       }
     }
+  }
+
+  // Cache miss + cacheOnly → bail without calling Gemini.
+  if (body.cacheOnly) {
+    return NextResponse.json<Payload>(FALLBACK);
   }
 
   if (!isGeminiAvailable() || body.scans.length < 3) {

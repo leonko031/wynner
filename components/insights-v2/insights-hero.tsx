@@ -231,6 +231,8 @@ export function useProfileTags({
   const [cached, setCached] = useState(false);
 
   // Memoize the body so the fetch effect doesn't re-fire on every render.
+  // cacheOnly: true means the route returns a cached row or FALLBACK_TAGS
+  // — never spends a Gemini call on mount. The /insights page stays snappy.
   const body = useMemo(
     () =>
       JSON.stringify({
@@ -240,6 +242,7 @@ export function useProfileTags({
         avgScore,
         winRate,
         operatorLevel,
+        cacheOnly: true,
       }),
     [scansHash, scans, totalScans, avgScore, winRate, operatorLevel],
   );

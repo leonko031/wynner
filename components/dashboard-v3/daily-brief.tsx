@@ -337,9 +337,10 @@ function LivingSidebar({
       transition={{ type: "spring", stiffness: 180, damping: 24, delay: 0.55 }}
       className="glass flex flex-col gap-8 rounded-[28px] p-6 md:p-8"
     >
-      {/* Orb */}
+      {/* Orb — staticIdle so the sidebar isn't repainting forever on every
+          /dashboard visit. PulsingDot below carries the "alive" signal. */}
       <div className="flex flex-col items-center gap-3 pt-2">
-        <AiOrb size={140} intensity={0.55} />
+        <AiOrb size={140} intensity={0.55} staticIdle />
         <div className="flex items-center gap-2 text-[11px] text-text-muted">
           <PulsingDot />
           <span className="font-mono uppercase tracking-[0.15em]">Wynner is observing</span>

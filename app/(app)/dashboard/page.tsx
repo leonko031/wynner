@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { GlobalCanvas, LoadCurtain } from "@/components/dashboard-v3/global-canvas";
+import { GlobalCanvas } from "@/components/dashboard-v3/global-canvas";
 import { CinematicOpening } from "@/components/dashboard-v3/cinematic-opening";
 import { DailyBrief, type Signal } from "@/components/dashboard-v3/daily-brief";
 import { PicksGallery } from "@/components/dashboard-v3/picks-gallery";
@@ -55,7 +55,6 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // Initial-load curtain
   // -------------------------------------------------------------------------
-  const [curtainDone, setCurtainDone] = useState(false);
 
   // -------------------------------------------------------------------------
   // Admin preview toggle — let admins see the empty-state composition.
@@ -383,17 +382,16 @@ export default function DashboardPage() {
   // Welcome toast (once per session)
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!curtainDone) return;
     const seen = window.sessionStorage.getItem("wynner.dashboard.v3.welcomed");
     if (seen) return;
     window.sessionStorage.setItem("wynner.dashboard.v3.welcomed", "1");
     const t = window.setTimeout(() => {
-      toast("Press 1-5 to jump · B to refresh the briefing", {
+      toast("Press Shift+1..5 to jump · Shift+B refreshes the briefing", {
         description: "Space scrolls past the cover.",
       });
     }, 1400);
     return () => window.clearTimeout(t);
-  }, [curtainDone]);
+  }, []);
 
   // -------------------------------------------------------------------------
   // Hero metadata — derived in an effect because `Date.now()` is impure for
@@ -429,8 +427,6 @@ export default function DashboardPage() {
   return (
     <>
       <GlobalCanvas />
-
-      {!curtainDone && <LoadCurtain onDone={() => setCurtainDone(true)} />}
 
       <main className="relative">
         <CinematicOpening

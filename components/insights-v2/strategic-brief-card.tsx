@@ -222,7 +222,14 @@ export function StrategicBriefCard(props: Props) {
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[120px_1fr]">
           <div className="flex justify-center md:justify-start">
-            <AiOrb size={96} intensity={0.7} />
+            {/* Orb only animates while the brief is actively loading — when
+                idle (cached or not yet generated) it sits still so it's not
+                burning paint cycles forever. */}
+            <AiOrb
+              size={96}
+              intensity={state.kind === "loading" ? 0.9 : 0.5}
+              staticIdle={state.kind !== "loading"}
+            />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-3">

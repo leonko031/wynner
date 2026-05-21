@@ -27,6 +27,8 @@ const bodySchema = z.object({
   winRate: z.number(),
   operatorLevel: z.number().int().min(0).max(100),
   regenerate: z.boolean().optional(),
+  /** Read-only — cache hit returns tags, miss returns FALLBACK_TAGS (no Gemini call). */
+  cacheOnly: z.boolean().optional(),
 });
 
 type Payload = {
@@ -111,6 +113,15 @@ export async function POST(req: Request) {
         });
       }
     }
+  }
+
+  // Cache miss + cacheOnly → return fallback without calling Gemini.
+  if (body.cacheOnly) {
+    return NextResponse.json<Payload>({
+      tags: FALLBACK_TAGS,
+      cached: false,
+      fellBack: true,
+    });
   }
 
   // -------------------- Call Gemini (fallback on any failure) --------------
