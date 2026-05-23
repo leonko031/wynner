@@ -18,11 +18,16 @@ import {
 } from "@/types/research";
 import type { Niche, Product, Source } from "@/types";
 import { COUNTRIES } from "@/lib/data/countries";
-import { AiOrb } from "./ai-orb";
-import { LiveThinkingFeed } from "./live-thinking-feed";
 import { StageProgressCard, type StageState } from "./stage-progress-card";
 import type { GroundingSource } from "@/types/grounding";
-import { ExternalLink } from "lucide-react";
+// Cinematic UI primitives — replace the old left-orb-right-cards layout.
+import { CinematicOrb, type OrbState } from "./live-scan/cinematic-orb";
+import { SourceFeed, type FeedEvent } from "./live-scan/source-feed";
+import { PhaseIndicator } from "./live-scan/phase-indicator";
+import {
+  StageTimeline,
+  type TimelineStage,
+} from "./live-scan/stage-timeline";
 
 export type LiveResearchInput = {
   mode: ResearchMode;
@@ -68,10 +73,16 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
   const [discoveredSources, setDiscoveredSources] = useState<GroundingSource[]>([]);
   /** Distinct grounded search queries the engine has fired. */
   const [runQueries, setRunQueries] = useState<Set<string>>(new Set());
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  /** Cinematic source feed event stream (typed unions). */
+  const [feedEvents, setFeedEvents] = useState<FeedEvent[]>([]);
+  /** Increment every time a source is discovered — drives orb node-flash. */
+  const [sourcePulseKey, setSourcePulseKey] = useState(0);
+  /** Which research phase (1/2/3) is currently in flight. 4 = done. */
+  const [currentPhase, setCurrentPhase] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
+  void thoughts; void celebrate;
   // Lazy useState — initializer runs exactly once and is allowed to read
   // Date.now() at mount time. This is the React 19 strict-mode-safe pattern
   // for "remember when the component mounted".
@@ -197,20 +208,19 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
     }
 
     function onProgress(ev: ResearchProgressEvent) {
-      // Phase events — sentinels in the thinking feed.
+      // Phase events — drive the top phase indicator + (legacy) thoughts feed.
       if (ev.type === "phase_started") {
-        const label =
-          ev.phase === 1 ? "Phase 1 — researching the web" :
-          ev.phase === 2 ? "Phase 2 — synthesizing findings" :
-          "Phase 3 — computing verdict";
-        setThoughts((prev) => [...prev, { id: nanoid(6), text: label }]);
+        setCurrentPhase(ev.phase);
         return;
       }
       if (ev.type === "phase_completed") {
-        return; // no-op, the next phase's start covers it
+        // Bump to the next phase ID when this one ends; final "phase 3
+        // completed" → 4, which the indicator renders as "all done".
+        setCurrentPhase((p) => Math.max(p, ev.phase + 1));
+        return;
       }
 
-      // Search-query + source events — real-time grounded research signal.
+      // Search-query event — push to the cinematic source feed + dedupe.
       if (ev.type === "search_query_started") {
         setRunQueries((prev) => {
           if (prev.has(ev.query)) return prev;
@@ -218,25 +228,40 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
           next.add(ev.query);
           return next;
         });
-        setThoughts((prev) => [
+        setFeedEvents((prev) => [
           ...prev,
-          { id: nanoid(6), text: `🔍 Searching: "${ev.query}"` },
+          {
+            kind: "query",
+            id: nanoid(8),
+            query: ev.query,
+            stage: ev.stage,
+            ts: Date.now(),
+          },
         ]);
         return;
       }
       if (ev.type === "search_query_completed") {
-        // Already had a started message — skip duplicate noise.
         return;
       }
+      // Source discovered — push to feed, bump the orb pulse key.
       if (ev.type === "source_discovered") {
         setDiscoveredSources((prev) => {
           if (prev.some((s) => s.uri === ev.source.uri)) return prev;
           return [...prev, ev.source];
         });
-        setThoughts((prev) => [
+        setFeedEvents((prev) => [
           ...prev,
-          { id: nanoid(6), text: `📄 Reading: ${ev.source.domain}` },
+          {
+            kind: "source",
+            id: nanoid(8),
+            uri: ev.source.uri,
+            title: ev.source.title,
+            domain: ev.source.domain,
+            stage: ev.stage,
+            ts: Date.now(),
+          },
         ]);
+        setSourcePulseKey((k) => k + 1);
         return;
       }
 
@@ -357,141 +382,95 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
   const totalSeconds = meta.estimatedSeconds;
   const remaining = Math.max(0, totalSeconds - secondsElapsed);
 
+  // Derive the orb state from scan state. Simple machine: complete > thinking.
+  // (Failing path navigates away via handleFatal, so we don't render it here.)
+  const orbState: OrbState = completed ? "complete" : "thinking";
+
+  // Map the engine's StageState[] to the cinematic timeline's TimelineStage[].
+  // The timeline distinguishes complete/fallback/failed; our engine uses
+  // status + usedFallback to express the same thing.
+  const timeline: TimelineStage[] = stages.map((s) => {
+    let status: TimelineStage["status"] = "pending";
+    if (s.status === "active") status = "active";
+    else if (s.status === "completed") status = s.usedFallback ? "fallback" : "complete";
+    else if (s.status === "failed") status = "failed";
+    return { id: s.id, status, durationMs: s.durationMs };
+  });
+
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[2fr_3fr]">
-        {/* LEFT — orb + thinking feed (sticky) */}
-        <div className="md:sticky md:top-24 md:self-start">
-          <div className="glass-strong rounded-3xl p-6">
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 text-xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-pulse-glow rounded-full bg-aurora-blue/70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-aurora-blue" />
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
-                  {completed ? "Research complete" : "Wynner is researching…"}
-                </span>
-              </div>
-              <h1 className="mt-2 text-balance text-lg font-medium tracking-tight text-text md:text-xl">
-                {input.product.name}
-              </h1>
-              <p className="mt-0.5 text-xs text-text-muted">
-                {country?.flag} {country?.name} · {meta.label}
-              </p>
-            </div>
-
-            <div className="mt-6 flex justify-center">
-              <AiOrb
-                size={200}
-                intensity={Math.max(0.3, completedCount / stages.length)}
-                celebrate={celebrate}
-              />
-            </div>
-
-            {/* Progress + time */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between text-[11px] text-text-dim">
-                <span className="font-mono uppercase tracking-wider">
-                  {progressPct}%
-                </span>
+    <main className="relative mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-[1600px] flex-col px-4 py-6 md:px-6 md:py-8">
+      {/* Top — phase indicator + product title */}
+      <div className="relative flex flex-col items-center gap-3">
+        <div className="relative">
+          <PhaseIndicator
+            currentPhase={currentPhase}
+            progress={completedCount / Math.max(1, stages.length)}
+          />
+        </div>
+        <div className="text-center">
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+            {completed ? "Research complete" : "Wynner is reading…"}
+          </div>
+          <h1 className="mt-1 font-serif text-2xl text-text md:text-3xl">
+            {input.product.name}
+          </h1>
+          <p className="mt-0.5 text-xs text-text-muted">
+            {country?.flag} {country?.name} · {meta.label}
+            {!completed && (
+              <>
+                {" · "}
                 <span className="font-mono tabular-nums">
-                  {completed
-                    ? `${secondsElapsed}s total`
-                    : remaining > 0
-                      ? `~${remaining}s left`
-                      : "Finalizing…"}
+                  {remaining > 0 ? `~${remaining}s left` : "Finalizing…"}
                 </span>
-              </div>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  style={{
-                    background:
-                      "linear-gradient(90deg, #5B8DFF, #A788FF, #FF89C5)",
-                    boxShadow: "0 0 8px rgba(167,136,255,0.6)",
-                  }}
-                />
-              </div>
-            </div>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
 
-            {/* Thinking feed */}
-            <div className="mt-6">
-              <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-text-dim">
-                Live research
-              </div>
-              <LiveThinkingFeed thoughts={thoughts} />
-            </div>
+      {/* Middle — 3 columns: source feed | orb (center) | (legacy stage cards, hidden ≥md) */}
+      <div className="relative mt-6 grid flex-1 grid-cols-1 gap-6 md:grid-cols-[minmax(280px,360px)_1fr_minmax(280px,360px)]">
+        <SourceFeed
+          events={feedEvents}
+          sourceCount={discoveredSources.length}
+          queryCount={runQueries.size}
+        />
 
-            {/* Sources counter + collapsible list */}
-            {(discoveredSources.length > 0 || runQueries.size > 0) && (
-              <div className="mt-4 rounded-2xl border border-border-soft bg-surface/50 p-3">
-                <button
-                  type="button"
-                  onClick={() => setSourcesOpen((o) => !o)}
-                  className="flex w-full items-center justify-between text-xs text-text-muted hover:text-text"
-                >
-                  <span>
-                    <span className="font-mono tabular-nums text-text">
-                      {discoveredSources.length}
-                    </span>{" "}
-                    source{discoveredSources.length === 1 ? "" : "s"} ·{" "}
-                    <span className="font-mono tabular-nums text-text">
-                      {runQueries.size}
-                    </span>{" "}
-                    quer{runQueries.size === 1 ? "y" : "ies"}
-                  </span>
-                  <span className="font-mono text-[10px] uppercase tracking-wider">
-                    {sourcesOpen ? "hide" : "show"}
-                  </span>
-                </button>
-                {sourcesOpen && (
-                  <ul className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1">
-                    {discoveredSources.slice(-20).reverse().map((src) => (
-                      <li key={src.uri} className="flex items-center gap-2 text-[11px]">
-                        <img
-                          src={`https://www.google.com/s2/favicons?domain=${src.domain}&sz=32`}
-                          alt=""
-                          width={12}
-                          height={12}
-                          className="h-3 w-3 rounded-sm"
-                        />
-                        <span className="truncate text-text-muted">{src.domain}</span>
-                        <a
-                          href={src.uri}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="ml-auto text-text-dim hover:text-text"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+        {/* Center — the orb. Centered vertically + horizontally. */}
+        <div className="relative flex items-center justify-center">
+          <CinematicOrb
+            state={orbState}
+            size={400}
+            sourcePulseKey={sourcePulseKey}
+          />
+        </div>
+
+        {/* Right — current-stage detail card (legacy stage progress cards
+            rendered compactly so the user can audit per-stage status). */}
+        <aside className="glass relative flex flex-col rounded-3xl p-5">
+          <div className="mb-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-text-muted">
+              Stages
+            </div>
+            <p className="mt-1 text-xs text-text-dim">
+              {completedCount} of {stages.length} complete
+            </p>
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+            {useMemo(
+              () =>
+                stages.map((s, i) => (
+                  <StageProgressCard key={s.id} stage={s} index={i} />
+                )),
+              [stages],
             )}
           </div>
-        </div>
+        </aside>
+      </div>
 
-        {/* RIGHT — stage cards */}
-        <div className="space-y-3">
-          <div className="mb-1 flex items-baseline justify-between">
-            <h2 className="text-base font-medium tracking-tight text-text">
-              {completedCount} of {stages.length} stages complete
-            </h2>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
-              {meta.label}
-            </span>
-          </div>
-          {useMemo(
-            () => stages.map((s, i) => <StageProgressCard key={s.id} stage={s} index={i} />),
-            [stages],
-          )}
-        </div>
+      {/* Bottom — stage timeline */}
+      <div className="mt-6">
+        <StageTimeline stages={timeline} />
       </div>
     </main>
   );
