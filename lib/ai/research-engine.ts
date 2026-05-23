@@ -155,11 +155,42 @@ type PhaseOneResult<T> = {
  * but never throws — the orchestrator continues with an empty signal for
  * that domain (marked low-confidence downstream).
  */
+/**
+ * Tiny concurrency semaphore — Standard/Deep can have 3+ grounded calls
+ * lined up at once. Hitting Gemini's per-key rate limit shows up as the
+ * same generic failure cascade, so we cap concurrency client-side. Per
+ * orchestrator: Standard=2, Deep=3, Quick=1 (single call, semaphore is a
+ * no-op).
+ */
+class Semaphore {
+  private queue: Array<() => void> = [];
+  private active = 0;
+  constructor(private readonly max: number) {}
+  async acquire(): Promise<() => void> {
+    if (this.active < this.max) {
+      this.active++;
+      return () => this.release();
+    }
+    return new Promise<() => void>((resolve) => {
+      this.queue.push(() => {
+        this.active++;
+        resolve(() => this.release());
+      });
+    });
+  }
+  private release(): void {
+    this.active--;
+    const next = this.queue.shift();
+    if (next) next();
+  }
+}
+
 async function runGroundedStage<T>(opts: {
   stage: ResearchStageId;
   prompt: string;
   schema: import("zod").ZodSchema<T>;
   model: "flash" | "pro";
+  semaphore?: Semaphore;
 }): Promise<{
   events: ResearchProgressEvent[];
   outcome: PhaseOneResult<T>;
@@ -172,11 +203,14 @@ async function runGroundedStage<T>(opts: {
     label: STAGE_LABELS[opts.stage],
   });
 
+  // Acquire a semaphore slot before the call so we don't burst the API.
+  const release = opts.semaphore ? await opts.semaphore.acquire() : null;
   try {
     const result = await geminiWithGrounding<T>({
       prompt: opts.prompt,
       schema: opts.schema,
       model: opts.model === "pro" ? "gemini-2.5-pro" : "gemini-2.5-flash",
+      label: opts.stage,
     });
 
     // Replay the search queries + sources as if they happened live. The UI
@@ -195,7 +229,7 @@ async function runGroundedStage<T>(opts: {
     }
 
     const sourceLabel = result.fellBackToUngrounded
-      ? "no grounding (fallback)"
+      ? "Offline mode for this stage"
       : `${result.sources.length} sources · ${result.searchQueries.length} queries`;
     events.push({
       type: "stage_completed",
@@ -229,6 +263,8 @@ async function runGroundedStage<T>(opts: {
         durationMs: Date.now() - started,
       },
     };
+  } finally {
+    if (release) release();
   }
 }
 
@@ -566,14 +602,18 @@ export async function* runDeepResearch(
   /* ----------------------- Assemble report ------------------------------- */
 
   // Average per-stage confidence — drives groundingQualityScore.
+  // Discovery confidence now includes "unknown" (when Gemini honestly has
+  // no signal); we collapse it to "low" for the average calc.
+  const normalize = (c: "low" | "medium" | "high" | "unknown" | undefined): "low" | "medium" | "high" =>
+    c === "high" || c === "medium" ? c : "low";
   const avgConfidence = ((): "low" | "medium" | "high" => {
     const confidences: ("low" | "medium" | "high")[] = [];
-    if (discoveryBundle.landscape) confidences.push(discoveryBundle.landscape.confidence);
-    if (discoveryBundle.voice) confidences.push(discoveryBundle.voice.confidence);
-    if (discoveryBundle.competitors) confidences.push(discoveryBundle.competitors.confidence);
-    if (discoveryBundle.quickSignals) confidences.push(discoveryBundle.quickSignals.confidence);
-    if (discoveryBundle.trends) confidences.push(discoveryBundle.trends.confidence);
-    if (discoveryBundle.countryContext) confidences.push(discoveryBundle.countryContext.confidence);
+    if (discoveryBundle.landscape) confidences.push(normalize(discoveryBundle.landscape.confidence));
+    if (discoveryBundle.voice) confidences.push(normalize(discoveryBundle.voice.confidence));
+    if (discoveryBundle.competitors) confidences.push(normalize(discoveryBundle.competitors.confidence));
+    if (discoveryBundle.quickSignals) confidences.push(normalize(discoveryBundle.quickSignals.confidence));
+    if (discoveryBundle.trends) confidences.push(normalize(discoveryBundle.trends.confidence));
+    if (discoveryBundle.countryContext) confidences.push(normalize(discoveryBundle.countryContext.confidence));
     if (confidences.length === 0) return "low";
     const highs = confidences.filter((c) => c === "high").length;
     const lows = confidences.filter((c) => c === "low").length;
@@ -648,6 +688,13 @@ async function launchDiscovery(
   const jobs: Promise<DiscoveryRunResult>[] = [];
   const model = meta.groundingModel;
 
+  // Per-tier concurrency cap on grounded calls. Quick has a single call so
+  // the semaphore is a no-op there; Standard bursts to 2; Deep to 3. Going
+  // higher hits Gemini's per-key rate limits and triggers the cascading
+  // failure mode we see in the wild.
+  const semCap = input.mode === "deep" ? 3 : input.mode === "standard" ? 2 : 1;
+  const sem = new Semaphore(semCap);
+
   for (const stage of meta.discoveryStages) {
     if (STAGE_PHASE[stage] !== 1) continue;
     const job: Promise<DiscoveryRunResult> = (async () => {
@@ -658,6 +705,7 @@ async function launchDiscovery(
             prompt: buildQuickSignalsPrompt(product, country, input.userContext),
             schema: quickSignalsSchema,
             model,
+            semaphore: sem,
           });
           return { stage, events: r.events, outcome: r.outcome };
         }
@@ -667,6 +715,7 @@ async function launchDiscovery(
             prompt: buildLandscapePrompt(product, country, input.userContext),
             schema: landscapeSchema,
             model,
+            semaphore: sem,
           });
           return { stage, events: r.events, outcome: r.outcome };
         }
@@ -676,6 +725,7 @@ async function launchDiscovery(
             prompt: buildVoicePrompt(product, country, input.userContext),
             schema: voiceSchema,
             model,
+            semaphore: sem,
           });
           return { stage, events: r.events, outcome: r.outcome };
         }
@@ -685,6 +735,7 @@ async function launchDiscovery(
             prompt: buildCompetitorsPrompt(product, country, input.userContext),
             schema: competitorsSchema,
             model,
+            semaphore: sem,
           });
           return { stage, events: r.events, outcome: r.outcome };
         }
@@ -694,6 +745,7 @@ async function launchDiscovery(
             prompt: buildTrendsPrompt(product, country, input.userContext),
             schema: trendsSchema,
             model,
+            semaphore: sem,
           });
           return { stage, events: r.events, outcome: r.outcome };
         }
@@ -703,11 +755,11 @@ async function launchDiscovery(
             prompt: buildCountryContextPrompt(product, country, input.userContext),
             schema: countryContextSchema,
             model,
+            semaphore: sem,
           });
           return { stage, events: r.events, outcome: r.outcome };
         }
         default:
-          // Unreachable for discovery stages; satisfies exhaustive switch.
           return {
             stage,
             events: [],

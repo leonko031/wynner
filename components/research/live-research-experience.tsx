@@ -263,7 +263,7 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
               return {
                 ...s,
                 status: "failed",
-                detail: `Recovered with fallback`,
+                detail: "Offline mode for this stage",
                 usedFallback: ev.usedFallback,
               };
             }

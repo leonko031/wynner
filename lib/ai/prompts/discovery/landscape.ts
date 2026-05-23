@@ -15,30 +15,35 @@ import { DISCOVERY_TONE, discoveryConfidence } from "./shared";
  * positioning angles are saturated vs. open, what price bands exist.
  */
 
-export const landscapeSchema = z.object({
-  categoryFraming: z.string().min(8).max(400),
-  topSellers: z
-    .array(
-      z.object({
-        name: z.string(),
-        positioning: z.string().min(4).max(240),
-        priceBand: z.string().optional(),
-        platforms: z.array(z.string()).max(5).optional(),
-        evidenceUrl: z.string().url().optional(),
-      }),
-    )
-    .min(1)
-    .max(8),
-  saturatedAngles: z.array(z.string()).max(8),
-  openAngles: z.array(z.string()).max(8),
-  priceBands: z.object({
-    low: z.string().optional(),
-    mid: z.string().optional(),
-    premium: z.string().optional(),
-  }),
-  noteworthyObservations: z.array(z.string()).max(6),
-  confidence: discoveryConfidence,
-});
+export const landscapeSchema = z
+  .object({
+    categoryFraming: z.string().min(4).max(400).optional().default(""),
+    topSellers: z
+      .array(
+        z.object({
+          name: z.string(),
+          positioning: z.string().max(240).default(""),
+          priceBand: z.string().optional(),
+          platforms: z.array(z.string()).max(5).optional(),
+          evidenceUrl: z.string().url().optional(),
+        }),
+      )
+      .max(8)
+      .default([]),
+    saturatedAngles: z.array(z.string()).max(8).default([]),
+    openAngles: z.array(z.string()).max(8).default([]),
+    priceBands: z
+      .object({
+        low: z.string().optional(),
+        mid: z.string().optional(),
+        premium: z.string().optional(),
+      })
+      .optional()
+      .default({}),
+    noteworthyObservations: z.array(z.string()).max(6).default([]),
+    confidence: discoveryConfidence.default("low"),
+  })
+  .passthrough();
 export type LandscapeOutput = z.infer<typeof landscapeSchema>;
 
 export function buildLandscapePrompt(

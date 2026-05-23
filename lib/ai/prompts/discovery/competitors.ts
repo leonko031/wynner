@@ -19,31 +19,37 @@ import {
  * angles, positioning, and observable price/MOQ data.
  */
 
-export const competitorsSchema = z.object({
-  topAdvertisers: z
-    .array(
-      observedBrandSchema.extend({
-        adAngle: z.string().min(4).max(240).optional(),
-        platformPresence: z.array(z.string()).max(5).optional(),
-        estimatedAdSpend: z.enum(["low", "medium", "high", "unknown"]).optional(),
-      }),
-    )
-    .max(8),
-  pricingObservations: z
-    .array(
-      z.object({
-        brand: z.string(),
-        productName: z.string().optional(),
-        price: z.string(),
-        evidenceUrl: z.string().url().optional(),
-      }),
-    )
-    .max(10),
-  marketGaps: z.array(z.string()).max(6),
-  saturationVerdict: z.enum(["untapped", "emerging", "competitive", "saturated"]),
-  notesOnVerdict: z.string().min(4).max(400),
-  confidence: discoveryConfidence,
-});
+export const competitorsSchema = z
+  .object({
+    topAdvertisers: z
+      .array(
+        observedBrandSchema.extend({
+          adAngle: z.string().max(240).optional(),
+          platformPresence: z.array(z.string()).max(5).optional(),
+          estimatedAdSpend: z.enum(["low", "medium", "high", "unknown"]).optional(),
+        }),
+      )
+      .max(8)
+      .default([]),
+    pricingObservations: z
+      .array(
+        z.object({
+          brand: z.string(),
+          productName: z.string().optional(),
+          price: z.string(),
+          evidenceUrl: z.string().url().optional(),
+        }),
+      )
+      .max(10)
+      .default([]),
+    marketGaps: z.array(z.string()).max(6).default([]),
+    saturationVerdict: z
+      .enum(["untapped", "emerging", "competitive", "saturated"])
+      .default("competitive"),
+    notesOnVerdict: z.string().max(400).default(""),
+    confidence: discoveryConfidence.default("low"),
+  })
+  .passthrough();
 export type CompetitorsOutput = z.infer<typeof competitorsSchema>;
 
 export function buildCompetitorsPrompt(

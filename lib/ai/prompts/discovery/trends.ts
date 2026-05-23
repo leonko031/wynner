@@ -16,36 +16,42 @@ import { DISCOVERY_TONE, discoveryConfidence } from "./shared";
  * influencer waves).
  */
 
-export const trendsSchema = z.object({
-  trajectory: z.enum(["pre-rising", "rising", "peak", "post-peak", "declining", "cyclical", "unknown"]),
-  trajectoryReasoning: z.string().min(4).max(400),
-  seasonality: z
-    .object({
-      pattern: z.enum(["none", "summer", "winter", "back-to-school", "holiday", "other"]),
-      note: z.string().max(240).optional(),
-    })
-    .optional(),
-  recentInflections: z
-    .array(
-      z.object({
-        when: z.string().min(2).max(60),
-        what: z.string().min(4).max(300),
-        evidenceUrl: z.string().url().optional(),
-      }),
-    )
-    .max(6),
-  emergingSubniches: z.array(z.string()).max(6),
-  viralExamples: z
-    .array(
-      z.object({
-        description: z.string().min(4).max(280),
-        platform: z.string().optional(),
-        evidenceUrl: z.string().url().optional(),
-      }),
-    )
-    .max(5),
-  confidence: discoveryConfidence,
-});
+export const trendsSchema = z
+  .object({
+    trajectory: z
+      .enum(["pre-rising", "rising", "peak", "post-peak", "declining", "cyclical", "unknown"])
+      .default("unknown"),
+    trajectoryReasoning: z.string().max(400).default(""),
+    seasonality: z
+      .object({
+        pattern: z.enum(["none", "summer", "winter", "back-to-school", "holiday", "other"]),
+        note: z.string().max(240).optional(),
+      })
+      .optional(),
+    recentInflections: z
+      .array(
+        z.object({
+          when: z.string().max(60).default(""),
+          what: z.string().max(300).default(""),
+          evidenceUrl: z.string().url().optional(),
+        }),
+      )
+      .max(6)
+      .default([]),
+    emergingSubniches: z.array(z.string()).max(6).default([]),
+    viralExamples: z
+      .array(
+        z.object({
+          description: z.string().max(280).default(""),
+          platform: z.string().optional(),
+          evidenceUrl: z.string().url().optional(),
+        }),
+      )
+      .max(5)
+      .default([]),
+    confidence: discoveryConfidence.default("low"),
+  })
+  .passthrough();
 export type TrendsOutput = z.infer<typeof trendsSchema>;
 
 export function buildTrendsPrompt(

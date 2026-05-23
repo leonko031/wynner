@@ -6,7 +6,12 @@ import { z } from "zod";
  * every meaningful claim carries a source URL pulled from grounding metadata.
  */
 
-export const discoveryConfidence = z.enum(["low", "medium", "high"]);
+/**
+ * Discovery confidence — we accept "unknown" as well because grounded calls
+ * may legitimately have nothing to say about a question. Downstream we treat
+ * "unknown" the same as "low" so existing UI doesn't have to special-case.
+ */
+export const discoveryConfidence = z.enum(["low", "medium", "high", "unknown"]);
 
 export const realQuoteSchema = z.object({
   quote: z.string().min(4).max(400),

@@ -6,8 +6,28 @@ import type {
 } from "@/types/grounding";
 
 const TIMEOUT_MS = 30_000;
-const GROUNDING_TIMEOUT_MS = 60_000;
+// Grounded calls (Google Search tool) routinely take 30-60s. Allow 90 so
+// long Pro-tier scrapes don't time out before the model finishes browsing.
+const GROUNDING_TIMEOUT_MS = 90_000;
 const RETRIES = 2;
+
+/**
+ * Verbose grounding logging — flip on by setting GEMINI_DEBUG=true or running
+ * in NODE_ENV=development. Output is prefixed [GEMINI_GROUNDING_DEBUG] so it's
+ * trivially greppable in Vercel/local logs. Capture instructions are in
+ * /docs/GROUNDING_DEBUG_LOG.md.
+ */
+function isGroundingDebug(): boolean {
+  return (
+    process.env.NODE_ENV === "development" ||
+    (process.env.GEMINI_DEBUG ?? "").toLowerCase() === "true"
+  );
+}
+function gdebug(...args: unknown[]) {
+  if (!isGroundingDebug()) return;
+  // eslint-disable-next-line no-console
+  console.error("[GEMINI_GROUNDING_DEBUG]", ...args);
+}
 
 export const FLASH_MODEL = "gemini-2.5-flash";
 export const PRO_MODEL = "gemini-2.5-pro";
@@ -170,16 +190,42 @@ export function geminiProJSON<T>(prompt: string): Promise<T> {
  * model's `generateContent` config. We pass `[{ googleSearch: {} }]`. The
  * SDK is loose on typing here so the array is cast through `unknown`.
  */
+/**
+ * The "return only JSON" suffix appended to grounded prompts. Grounding
+ * tools[] is incompatible with structured-output mode (responseMimeType:
+ * "application/json" or responseSchema), so we have to coerce JSON via
+ * prompt instructions instead. See parseJson() — it strips ```json fences.
+ */
+const JSON_DISCIPLINE_SUFFIX = `\n\n---\nCRITICAL OUTPUT RULES:
+1. Respond ONLY with valid JSON conforming to the schema described above.
+2. NO markdown code fences (no \`\`\`json, no \`\`\`).
+3. NO preamble, NO explanation, NO trailing commentary.
+4. Begin your response with { and end with }.
+5. If a field's value is unknown, use null or [] — never omit required fields.`;
+
+/**
+ * Second-attempt suffix added when the first response failed parse/validation.
+ * Gemini is good at self-correcting when told exactly what went wrong.
+ */
+function correctiveSuffix(reason: string): string {
+  return `\n\n---\nYour previous response failed schema validation: ${reason}
+Return ONLY valid JSON now. No markdown fences, no preamble. Begin with { and end with }.`;
+}
+
 export async function geminiWithGrounding<T>(opts: {
   prompt: string;
   systemInstruction?: string;
   schema: ZodSchema<T>;
   model?: "gemini-2.5-pro" | "gemini-2.5-flash";
+  /** Optional label so debug logs can identify which call this is. */
+  label?: string;
 }): Promise<GroundedCallResult<T>> {
   const modelName = opts.model ?? FLASH_MODEL;
   const started = Date.now();
+  const label = opts.label ?? "unlabeled";
 
   if (!isGroundingEnabled()) {
+    gdebug(`${label} — grounding disabled, using ungrounded fallback`);
     return ungroundedFallback<T>(modelName, opts.prompt, opts.schema, started, "grounding_disabled");
   }
   const client = getClient();
@@ -188,34 +234,82 @@ export async function geminiWithGrounding<T>(opts: {
   }
 
   let lastError: unknown;
-  for (let attempt = 0; attempt <= RETRIES; attempt++) {
+  let lastFailureReason = "";
+  // Two-attempt loop: first grounded call, then one corrective retry if the
+  // response fails parse/validation. Network-level retries on top via
+  // withRetry semantics would just multiply latency for an already-slow call.
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
+      const promptWithDiscipline =
+        opts.prompt +
+        (attempt === 0 ? JSON_DISCIPLINE_SUFFIX : correctiveSuffix(lastFailureReason));
+
       const model = client.getGenerativeModel({
         model: modelName,
         systemInstruction: opts.systemInstruction,
+        // CRITICAL: do NOT set responseMimeType or responseSchema here.
+        // Structured-output mode + tools[] is a documented Gemini API
+        // conflict — when both are present, the API rejects the request
+        // with an unhelpful generic error. JSON discipline is enforced via
+        // the prompt suffix above and the parseJson markdown-fence stripper.
         generationConfig: {
           temperature: 0.4,
-          responseMimeType: "application/json",
         },
-        // The SDK's TS types don't include the googleSearch tool yet —
-        // it's documented for v1beta but missing from this version's
-        // GenerativeModel options. Cast through unknown to set it.
+        // The SDK's TS types don't include the googleSearch tool. Per the
+        // current Gemini docs (2.0+ models), the correct shape is
+        // [{ googleSearch: {} }] — older 1.5 models used
+        // [{ googleSearchRetrieval: {} }]. We're on 2.5, so googleSearch.
         tools: [{ googleSearch: {} }] as unknown as never,
       });
+
+      gdebug(`${label} attempt ${attempt + 1} — calling`, {
+        model: modelName,
+        tools: ["googleSearch"],
+        promptChars: promptWithDiscipline.length,
+      });
+
       const result = await withTimeout(
-        model.generateContent(opts.prompt),
+        model.generateContent(promptWithDiscipline),
         GROUNDING_TIMEOUT_MS,
       );
       const text = result.response.text();
-      const parsedJson = parseJson<unknown>(text);
-      const validated = opts.schema.safeParse(parsedJson);
-      if (!validated.success) {
-        throw new Error(
-          `grounding_validation_failed: ${validated.error.issues[0]?.message ?? "unknown"}`,
-        );
+      gdebug(`${label} attempt ${attempt + 1} — raw response`, {
+        chars: text.length,
+        first200: text.slice(0, 200),
+        last100: text.slice(-100),
+      });
+
+      // Parse + validate. Both can throw — we want to distinguish so the
+      // corrective retry can tell Gemini what to fix.
+      let parsedJson: unknown;
+      try {
+        parsedJson = parseJson<unknown>(text);
+      } catch (parseErr) {
+        lastFailureReason = `JSON parse failed: ${
+          parseErr instanceof Error ? parseErr.message : String(parseErr)
+        }`;
+        gdebug(`${label} attempt ${attempt + 1} — parse failed`, {
+          reason: lastFailureReason,
+          text: text.slice(0, 500),
+        });
+        throw new Error(lastFailureReason);
       }
 
-      // Pull groundingMetadata out of the SDK response. Shape per
+      const validated = opts.schema.safeParse(parsedJson);
+      if (!validated.success) {
+        const firstIssue = validated.error.issues[0];
+        lastFailureReason = firstIssue
+          ? `${firstIssue.path.join(".") || "(root)"}: ${firstIssue.message}`
+          : "unknown schema mismatch";
+        gdebug(`${label} attempt ${attempt + 1} — schema failed`, {
+          reason: lastFailureReason,
+          issues: validated.error.issues.slice(0, 5),
+          parsedJson: JSON.stringify(parsedJson).slice(0, 500),
+        });
+        throw new Error(`schema_validation_failed: ${lastFailureReason}`);
+      }
+
+      // Extract grounding metadata. The shape is documented at
       // https://ai.google.dev/api/generate-content#GroundingMetadata
       const candidate = (result.response as unknown as {
         candidates?: Array<{
@@ -225,10 +319,18 @@ export async function geminiWithGrounding<T>(opts: {
             }>;
             webSearchQueries?: string[];
           };
+          finishReason?: string;
         }>;
+        promptFeedback?: { blockReason?: string };
       }).candidates?.[0];
-      const metadata = candidate?.groundingMetadata;
 
+      gdebug(`${label} attempt ${attempt + 1} — succeeded`, {
+        finishReason: candidate?.finishReason,
+        sourceCount: candidate?.groundingMetadata?.groundingChunks?.length ?? 0,
+        queryCount: candidate?.groundingMetadata?.webSearchQueries?.length ?? 0,
+      });
+
+      const metadata = candidate?.groundingMetadata;
       const sources: GroundingSource[] = (metadata?.groundingChunks ?? [])
         .map((chunk, i): GroundingSource | null => {
           const uri = chunk.web?.uri;
@@ -267,18 +369,26 @@ export async function geminiWithGrounding<T>(opts: {
       };
     } catch (err) {
       lastError = err;
-      if (attempt < RETRIES) {
-        const wait = attempt === 0 ? 1_000 : 3_000;
-        await new Promise((r) => setTimeout(r, wait));
-      }
+      gdebug(`${label} attempt ${attempt + 1} — exception`, {
+        name: err instanceof Error ? err.name : "unknown",
+        message: err instanceof Error ? err.message : String(err),
+      });
+      // First attempt failed — the loop's next iteration uses the
+      // corrective suffix. Second attempt failed → fall through to the
+      // ungrounded fallback below.
     }
   }
 
-  // All retries exhausted — fall back to an ungrounded call so the pipeline
-  // continues. The orchestrator will mark this section's confidence "low".
+  // Both attempts failed. Log + fall back to ungrounded so the pipeline
+  // continues. The orchestrator marks the section's confidence "low" and the
+  // UI shows the "Offline mode for this stage" indicator.
+  gdebug(`${label} — all grounded attempts failed, falling back to ungrounded`, {
+    finalError: lastError instanceof Error ? lastError.message : String(lastError),
+  });
+  // eslint-disable-next-line no-console
   console.error(
-    `[geminiWithGrounding] all retries failed, falling back to ungrounded`,
-    lastError,
+    `[geminiWithGrounding] ${label}: all attempts failed, falling back to ungrounded`,
+    lastError instanceof Error ? lastError.message : String(lastError),
   );
   return ungroundedFallback<T>(modelName, opts.prompt, opts.schema, started, "retries_exhausted");
 }
@@ -290,8 +400,16 @@ async function ungroundedFallback<T>(
   started: number,
   _reason: string,
 ): Promise<GroundedCallResult<T>> {
+  // Tell the model explicitly it's running ungrounded so it doesn't pretend
+  // to have searched — mark sources as empty and confidence as low instead.
+  const ungroundedPrompt =
+    prompt +
+    `\n\n---\nNote: This is a non-grounded response. Use your training knowledge.
+Be honest about uncertainty by marking all sources arrays as empty and any
+confidence field as "low". Respond ONLY with valid JSON — no markdown
+fences, no preamble.`;
   try {
-    const raw = await geminiJSON<unknown>(modelName, prompt);
+    const raw = await geminiJSON<unknown>(modelName, ungroundedPrompt);
     const validated = schema.safeParse(raw);
     if (!validated.success) {
       throw new Error(
@@ -307,7 +425,6 @@ async function ungroundedFallback<T>(
       fellBackToUngrounded: true,
     };
   } catch (e) {
-    // Re-throw — the orchestrator's per-stage fallback will catch this.
     throw e instanceof Error ? e : new Error(String(e));
   }
 }

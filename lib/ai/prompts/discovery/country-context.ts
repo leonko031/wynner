@@ -16,33 +16,40 @@ import { DISCOVERY_TONE, discoveryConfidence } from "./shared";
  * that change how the angle should be framed.
  */
 
-export const countryContextSchema = z.object({
-  regulatoryNotes: z
-    .array(
-      z.object({
-        topic: z.string().min(2).max(120),
-        detail: z.string().min(4).max(400),
-        evidenceUrl: z.string().url().optional(),
-        severity: z.enum(["info", "watch", "blocker"]),
-      }),
-    )
-    .max(6),
-  paymentAndShipping: z.object({
-    expectations: z.string().min(4).max(400),
-    commonObjections: z.array(z.string()).max(5),
-  }),
-  languageNotes: z.string().min(4).max(400),
-  culturalAngles: z.array(z.string()).max(6),
-  localCompetitors: z
-    .array(
-      z.object({
-        name: z.string(),
-        note: z.string().min(4).max(240),
-      }),
-    )
-    .max(6),
-  confidence: discoveryConfidence,
-});
+export const countryContextSchema = z
+  .object({
+    regulatoryNotes: z
+      .array(
+        z.object({
+          topic: z.string().max(120).default(""),
+          detail: z.string().max(400).default(""),
+          evidenceUrl: z.string().url().optional(),
+          severity: z.enum(["info", "watch", "blocker"]).default("info"),
+        }),
+      )
+      .max(6)
+      .default([]),
+    paymentAndShipping: z
+      .object({
+        expectations: z.string().max(400).default(""),
+        commonObjections: z.array(z.string()).max(5).default([]),
+      })
+      .optional()
+      .default({ expectations: "", commonObjections: [] }),
+    languageNotes: z.string().max(400).default(""),
+    culturalAngles: z.array(z.string()).max(6).default([]),
+    localCompetitors: z
+      .array(
+        z.object({
+          name: z.string(),
+          note: z.string().max(240).default(""),
+        }),
+      )
+      .max(6)
+      .default([]),
+    confidence: discoveryConfidence.default("low"),
+  })
+  .passthrough();
 export type CountryContextOutput = z.infer<typeof countryContextSchema>;
 
 export function buildCountryContextPrompt(

@@ -21,25 +21,33 @@ import {
  * landscape/voice/competitor prompts in parallel instead.
  */
 
-export const quickSignalsSchema = z.object({
-  similarProducts: z
-    .array(
-      z.object({
-        name: z.string(),
-        price: z.string().optional(),
-        positioning: z.string().min(4).max(180),
-        evidenceUrl: z.string().url().optional(),
-      }),
-    )
-    .max(5),
-  customerQuotes: z.array(realQuoteSchema).max(8),
-  competitorBrands: z.array(observedBrandSchema).max(4),
-  trendSignal: z.object({
-    direction: z.enum(["rising", "flat", "declining", "unknown"]),
-    note: z.string().min(4).max(200),
-  }),
-  confidence: discoveryConfidence,
-});
+export const quickSignalsSchema = z
+  .object({
+    similarProducts: z
+      .array(
+        z.object({
+          name: z.string(),
+          price: z.string().optional(),
+          positioning: z.string().min(4).max(180),
+          evidenceUrl: z.string().url().optional(),
+        }),
+      )
+      .max(5)
+      .default([]),
+    customerQuotes: z.array(realQuoteSchema).max(8).default([]),
+    competitorBrands: z.array(observedBrandSchema).max(4).default([]),
+    trendSignal: z
+      .object({
+        direction: z.enum(["rising", "flat", "declining", "unknown"]),
+        note: z.string().min(4).max(200),
+      })
+      .optional()
+      .default({ direction: "unknown", note: "No clear trend signal." }),
+    confidence: discoveryConfidence.default("low"),
+  })
+  // Tolerate extra metadata fields Gemini may add — we won't error on
+  // unrecognized keys; we just ignore them.
+  .passthrough();
 export type QuickSignalsOutput = z.infer<typeof quickSignalsSchema>;
 
 export function buildQuickSignalsPrompt(

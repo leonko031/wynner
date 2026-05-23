@@ -16,30 +16,34 @@ import { DISCOVERY_TONE, discoveryConfidence, realQuoteSchema } from "./shared";
  * angles get grounded in downstream.
  */
 
-export const voiceSchema = z.object({
-  topPains: z
-    .array(
-      z.object({
-        pain: z.string().min(4).max(200),
-        frequency: z.enum(["sporadic", "common", "dominant"]),
-      }),
-    )
-    .max(8),
-  topObjections: z.array(z.string()).max(6),
-  topDesiredOutcomes: z.array(z.string()).max(5),
-  languagePatterns: z.array(z.string()).max(8),
-  realQuotes: z.array(realQuoteSchema).max(12),
-  sourceSurfaces: z
-    .array(
-      z.object({
-        type: z.enum(["reddit", "amazon", "forum", "youtube", "tiktok", "blog", "other"]),
-        url: z.string().url().optional(),
-        note: z.string().max(200).optional(),
-      }),
-    )
-    .max(10),
-  confidence: discoveryConfidence,
-});
+export const voiceSchema = z
+  .object({
+    topPains: z
+      .array(
+        z.object({
+          pain: z.string().min(2).max(200),
+          frequency: z.enum(["sporadic", "common", "dominant"]).default("common"),
+        }),
+      )
+      .max(8)
+      .default([]),
+    topObjections: z.array(z.string()).max(6).default([]),
+    topDesiredOutcomes: z.array(z.string()).max(5).default([]),
+    languagePatterns: z.array(z.string()).max(8).default([]),
+    realQuotes: z.array(realQuoteSchema).max(12).default([]),
+    sourceSurfaces: z
+      .array(
+        z.object({
+          type: z.enum(["reddit", "amazon", "forum", "youtube", "tiktok", "blog", "other"]),
+          url: z.string().url().optional(),
+          note: z.string().max(200).optional(),
+        }),
+      )
+      .max(10)
+      .default([]),
+    confidence: discoveryConfidence.default("low"),
+  })
+  .passthrough();
 export type VoiceOutput = z.infer<typeof voiceSchema>;
 
 export function buildVoicePrompt(
