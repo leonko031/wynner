@@ -156,6 +156,60 @@ type PhaseOneResult<T> = {
  * that domain (marked low-confidence downstream).
  */
 /**
+ * Tiny producer-consumer event bus. Multiple parallel grounded calls push
+ * events into the queue as they happen; the orchestrator drains it
+ * sequentially and yields each event. This is what makes the live UI feel
+ * real-time — without this, all phase-1 events arrived in a burst after
+ * Promise.all resolved.
+ *
+ * Usage:
+ *   const bus = new EventBus<ResearchProgressEvent>();
+ *   const allDone = Promise.all([...jobs(bus)]);
+ *   allDone.finally(() => bus.close());
+ *   for await (const ev of bus) yield ev;
+ */
+class EventBus<T> {
+  private queue: T[] = [];
+  private resolvers: Array<(value: IteratorResult<T>) => void> = [];
+  private closed = false;
+
+  push(value: T): void {
+    const next = this.resolvers.shift();
+    if (next) {
+      next({ value, done: false });
+    } else {
+      this.queue.push(value);
+    }
+  }
+
+  close(): void {
+    this.closed = true;
+    while (this.resolvers.length > 0) {
+      const r = this.resolvers.shift();
+      if (r) r({ value: undefined as unknown as T, done: true });
+    }
+  }
+
+  [Symbol.asyncIterator](): AsyncIterator<T> {
+    return {
+      next: (): Promise<IteratorResult<T>> => {
+        if (this.queue.length > 0) {
+          return Promise.resolve({ value: this.queue.shift()!, done: false });
+        }
+        if (this.closed) {
+          return Promise.resolve({ value: undefined as unknown as T, done: true });
+        }
+        return new Promise<IteratorResult<T>>((resolve) => {
+          this.resolvers.push(resolve);
+        });
+      },
+    };
+  }
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
  * Tiny concurrency semaphore — Standard/Deep can have 3+ grounded calls
  * lined up at once. Hitting Gemini's per-key rate limit shows up as the
  * same generic failure cascade, so we cap concurrency client-side. Per
@@ -191,13 +245,18 @@ async function runGroundedStage<T>(opts: {
   schema: import("zod").ZodSchema<T>;
   model: "flash" | "pro";
   semaphore?: Semaphore;
+  /**
+   * Live event bus. When passed, the stage streams events to it as they
+   * happen (with small drips so the UI source-feed feels alive instead of
+   * receiving a burst at the end). The orchestrator drains the bus.
+   */
+  bus?: EventBus<ResearchProgressEvent>;
 }): Promise<{
-  events: ResearchProgressEvent[];
   outcome: PhaseOneResult<T>;
 }> {
-  const events: ResearchProgressEvent[] = [];
   const started = Date.now();
-  events.push({
+  const emit = (ev: ResearchProgressEvent) => opts.bus?.push(ev);
+  emit({
     type: "stage_started",
     stage: opts.stage,
     label: STAGE_LABELS[opts.stage],
@@ -213,25 +272,24 @@ async function runGroundedStage<T>(opts: {
       label: opts.stage,
     });
 
-    // Replay the search queries + sources as if they happened live. The UI
-    // ingests these to render the live thinking feed.
+    // Drip the search queries + sources into the bus so the UI's source
+    // feed gets a steady "Wynner is reading the web" rhythm instead of an
+    // anti-climactic burst at the end of the call. Total drip time is
+    // capped by the natural cadence below — usually well under 2s.
     for (const q of result.searchQueries) {
-      events.push({ type: "search_query_started", query: q, stage: opts.stage });
-      events.push({
-        type: "search_query_completed",
-        query: q,
-        resultCount: result.sources.filter(() => true).length,
-        stage: opts.stage,
-      });
+      emit({ type: "search_query_started", query: q, stage: opts.stage });
+      // Small gap between queries so they don't all type in at once.
+      await sleep(80);
     }
     for (const src of result.sources) {
-      events.push({ type: "source_discovered", source: src, stage: opts.stage });
+      emit({ type: "source_discovered", source: src, stage: opts.stage });
+      await sleep(70);
     }
 
     const sourceLabel = result.fellBackToUngrounded
       ? "Offline mode for this stage"
       : `${result.sources.length} sources · ${result.searchQueries.length} queries`;
-    events.push({
+    emit({
       type: "stage_completed",
       stage: opts.stage,
       preview: sourceLabel,
@@ -239,7 +297,6 @@ async function runGroundedStage<T>(opts: {
     });
 
     return {
-      events,
       outcome: {
         data: result.data,
         result,
@@ -248,14 +305,13 @@ async function runGroundedStage<T>(opts: {
       },
     };
   } catch (err) {
-    events.push({
+    emit({
       type: "stage_failed",
       stage: opts.stage,
       error: err instanceof Error ? err.message : String(err),
       usedFallback: true,
     });
     return {
-      events,
       outcome: {
         data: null,
         result: null,
@@ -365,12 +421,31 @@ export async function* runDeepResearch(
   /* ----------------------- PHASE 1 — discovery ---------------------------- */
   yield { type: "phase_started", phase: 1 as ResearchPhase };
 
-  const discoveryStarts = await launchDiscovery(productForPrompts, country, input, meta);
-  const discoveryResults = await Promise.all(discoveryStarts);
-  // Replay events from each parallel call in stage order.
-  for (const r of discoveryResults) {
-    for (const ev of r.events) yield ev;
+  // Shared event bus so parallel grounded calls can stream events to the UI
+  // as they happen — without it, all phase-1 events arrived in a burst at
+  // the end of Promise.all and the feed felt batched. Each stage pushes
+  // search queries + sources with small drips for cinematic cadence.
+  const phase1Bus = new EventBus<ResearchProgressEvent>();
+  const discoveryStarts = await launchDiscovery(
+    productForPrompts,
+    country,
+    input,
+    meta,
+    phase1Bus,
+  );
+  const allDiscoveryDone = Promise.all(discoveryStarts);
+  // Close the bus once every parallel job has settled so the for-await
+  // loop below can exit cleanly. Use a separate .finally so errors don't
+  // leave the bus open.
+  allDiscoveryDone.finally(() => phase1Bus.close());
+
+  // Drain the bus in real time. Each yield lands as a separate SSE event
+  // on the wire, so the UI gets the streaming feel even though the
+  // underlying Gemini call is non-streaming.
+  for await (const ev of phase1Bus) {
+    yield ev;
   }
+  const discoveryResults = await allDiscoveryDone;
 
   // Merge sources
   const sourceBuckets = discoveryResults.map((r) => ({
@@ -684,14 +759,12 @@ async function launchDiscovery(
   country: Country,
   input: RunResearchInput,
   meta: typeof RESEARCH_MODE_META[ResearchMode],
+  bus: EventBus<ResearchProgressEvent>,
 ): Promise<Promise<DiscoveryRunResult>[]> {
   const jobs: Promise<DiscoveryRunResult>[] = [];
   const model = meta.groundingModel;
 
-  // Per-tier concurrency cap on grounded calls. Quick has a single call so
-  // the semaphore is a no-op there; Standard bursts to 2; Deep to 3. Going
-  // higher hits Gemini's per-key rate limits and triggers the cascading
-  // failure mode we see in the wild.
+  // Per-tier concurrency cap on grounded calls.
   const semCap = input.mode === "deep" ? 3 : input.mode === "standard" ? 2 : 1;
   const sem = new Semaphore(semCap);
 
@@ -706,8 +779,9 @@ async function launchDiscovery(
             schema: quickSignalsSchema,
             model,
             semaphore: sem,
+            bus,
           });
-          return { stage, events: r.events, outcome: r.outcome };
+          return { stage, events: [], outcome: r.outcome };
         }
         case "landscape": {
           const r = await runGroundedStage<LandscapeOutput>({
@@ -716,8 +790,9 @@ async function launchDiscovery(
             schema: landscapeSchema,
             model,
             semaphore: sem,
+            bus,
           });
-          return { stage, events: r.events, outcome: r.outcome };
+          return { stage, events: [], outcome: r.outcome };
         }
         case "voice": {
           const r = await runGroundedStage<VoiceOutput>({
@@ -726,8 +801,9 @@ async function launchDiscovery(
             schema: voiceSchema,
             model,
             semaphore: sem,
+            bus,
           });
-          return { stage, events: r.events, outcome: r.outcome };
+          return { stage, events: [], outcome: r.outcome };
         }
         case "competitors_discovery": {
           const r = await runGroundedStage<CompetitorsOutput>({
@@ -736,8 +812,9 @@ async function launchDiscovery(
             schema: competitorsSchema,
             model,
             semaphore: sem,
+            bus,
           });
-          return { stage, events: r.events, outcome: r.outcome };
+          return { stage, events: [], outcome: r.outcome };
         }
         case "trends": {
           const r = await runGroundedStage<TrendsOutput>({
@@ -746,8 +823,9 @@ async function launchDiscovery(
             schema: trendsSchema,
             model,
             semaphore: sem,
+            bus,
           });
-          return { stage, events: r.events, outcome: r.outcome };
+          return { stage, events: [], outcome: r.outcome };
         }
         case "country_context": {
           const r = await runGroundedStage<CountryContextOutput>({
@@ -756,8 +834,9 @@ async function launchDiscovery(
             schema: countryContextSchema,
             model,
             semaphore: sem,
+            bus,
           });
-          return { stage, events: r.events, outcome: r.outcome };
+          return { stage, events: [], outcome: r.outcome };
         }
         default:
           return {

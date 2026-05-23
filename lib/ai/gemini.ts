@@ -1,4 +1,10 @@
 import { GoogleGenerativeAI, type GenerationConfig } from "@google/generative-ai";
+// New SDK used specifically for grounded calls. The old SDK's
+// GoogleSearchRetrievalTool expects { googleSearchRetrieval: {} } (Gemini
+// 1.5 era); for 2.5+ models the correct tool key is { googleSearch: {} },
+// which is what the new SDK exposes. Keeping both SDKs side-by-side
+// minimizes churn — only the grounding wrapper migrated.
+import { GoogleGenAI } from "@google/genai";
 import type { ZodSchema } from "zod";
 import type {
   GroundedCallResult,
@@ -33,6 +39,16 @@ export const FLASH_MODEL = "gemini-2.5-flash";
 export const PRO_MODEL = "gemini-2.5-pro";
 
 let cachedClient: GoogleGenerativeAI | null = null;
+
+/** New SDK client — used only by geminiWithGrounding (correct googleSearch tool support). */
+let cachedGenAI: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI | null {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  if (cachedGenAI) return cachedGenAI;
+  cachedGenAI = new GoogleGenAI({ apiKey: key });
+  return cachedGenAI;
+}
 
 function getClient(): GoogleGenerativeAI | null {
   const key = process.env.GEMINI_API_KEY;
@@ -228,59 +244,69 @@ export async function geminiWithGrounding<T>(opts: {
     gdebug(`${label} — grounding disabled, using ungrounded fallback`);
     return ungroundedFallback<T>(modelName, opts.prompt, opts.schema, started, "grounding_disabled");
   }
-  const client = getClient();
-  if (!client) {
+  const ai = getGenAI();
+  if (!ai) {
     throw new Error("GEMINI_API_KEY missing");
   }
 
   let lastError: unknown;
   let lastFailureReason = "";
-  // Two-attempt loop: first grounded call, then one corrective retry if the
-  // response fails parse/validation. Network-level retries on top via
-  // withRetry semantics would just multiply latency for an already-slow call.
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const promptWithDiscipline =
         opts.prompt +
         (attempt === 0 ? JSON_DISCIPLINE_SUFFIX : correctiveSuffix(lastFailureReason));
 
-      const model = client.getGenerativeModel({
-        model: modelName,
-        systemInstruction: opts.systemInstruction,
-        // CRITICAL: do NOT set responseMimeType or responseSchema here.
-        // Structured-output mode + tools[] is a documented Gemini API
-        // conflict — when both are present, the API rejects the request
-        // with an unhelpful generic error. JSON discipline is enforced via
-        // the prompt suffix above and the parseJson markdown-fence stripper.
-        generationConfig: {
-          temperature: 0.4,
-        },
-        // The SDK's TS types don't include the googleSearch tool. Per the
-        // current Gemini docs (2.0+ models), the correct shape is
-        // [{ googleSearch: {} }] — older 1.5 models used
-        // [{ googleSearchRetrieval: {} }]. We're on 2.5, so googleSearch.
-        tools: [{ googleSearch: {} }] as unknown as never,
-      });
-
-      gdebug(`${label} attempt ${attempt + 1} — calling`, {
+      gdebug(`${label} attempt ${attempt + 1} — calling (new SDK)`, {
         model: modelName,
         tools: ["googleSearch"],
         promptChars: promptWithDiscipline.length,
       });
 
+      // NEW SDK call. The shape is:
+      //   ai.models.generateContent({ model, contents, config: { tools, ... } })
+      // The new SDK accepts { googleSearch: {} } natively for 2.5+ models —
+      // unlike the old SDK which silently dropped the unknown key when we
+      // tried to pass it through its typed Tool interface (which uses the
+      // older googleSearchRetrieval name for 1.5 models).
+      //
+      // CRITICAL: still no responseMimeType / responseSchema. Tools[] and
+      // structured-output mode are mutually exclusive — JSON discipline
+      // stays on the prompt side.
       const result = await withTimeout(
-        model.generateContent(promptWithDiscipline),
+        ai.models.generateContent({
+          model: modelName,
+          contents: promptWithDiscipline,
+          config: {
+            temperature: 0.4,
+            ...(opts.systemInstruction
+              ? { systemInstruction: opts.systemInstruction }
+              : {}),
+            tools: [{ googleSearch: {} }],
+          },
+        }),
         GROUNDING_TIMEOUT_MS,
       );
-      const text = result.response.text();
+
+      // New SDK exposes a `text` getter on the response. Fall back to
+      // walking candidates[0].content.parts in case the getter is empty.
+      const text =
+        result.text ??
+        (result.candidates?.[0]?.content?.parts ?? [])
+          .map((p) => (typeof p === "object" && p && "text" in p ? (p as { text?: string }).text ?? "" : ""))
+          .join("");
+
       gdebug(`${label} attempt ${attempt + 1} — raw response`, {
         chars: text.length,
         first200: text.slice(0, 200),
         last100: text.slice(-100),
       });
 
-      // Parse + validate. Both can throw — we want to distinguish so the
-      // corrective retry can tell Gemini what to fix.
+      if (!text || text.length === 0) {
+        lastFailureReason = "empty_response_text";
+        throw new Error(lastFailureReason);
+      }
+
       let parsedJson: unknown;
       try {
         parsedJson = parseJson<unknown>(text);
@@ -309,21 +335,7 @@ export async function geminiWithGrounding<T>(opts: {
         throw new Error(`schema_validation_failed: ${lastFailureReason}`);
       }
 
-      // Extract grounding metadata. The shape is documented at
-      // https://ai.google.dev/api/generate-content#GroundingMetadata
-      const candidate = (result.response as unknown as {
-        candidates?: Array<{
-          groundingMetadata?: {
-            groundingChunks?: Array<{
-              web?: { uri?: string; title?: string };
-            }>;
-            webSearchQueries?: string[];
-          };
-          finishReason?: string;
-        }>;
-        promptFeedback?: { blockReason?: string };
-      }).candidates?.[0];
-
+      const candidate = result.candidates?.[0];
       gdebug(`${label} attempt ${attempt + 1} — succeeded`, {
         finishReason: candidate?.finishReason,
         sourceCount: candidate?.groundingMetadata?.groundingChunks?.length ?? 0,
@@ -352,9 +364,7 @@ export async function geminiWithGrounding<T>(opts: {
         .filter((x): x is GroundingSource => x !== null);
 
       const searchQueries: string[] = metadata?.webSearchQueries ?? [];
-      const usage = (result.response as unknown as {
-        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
-      }).usageMetadata;
+      const usage = result.usageMetadata;
 
       return {
         data: validated.data,
@@ -373,9 +383,6 @@ export async function geminiWithGrounding<T>(opts: {
         name: err instanceof Error ? err.name : "unknown",
         message: err instanceof Error ? err.message : String(err),
       });
-      // First attempt failed — the loop's next iteration uses the
-      // corrective suffix. Second attempt failed → fall through to the
-      // ungrounded fallback below.
     }
   }
 
