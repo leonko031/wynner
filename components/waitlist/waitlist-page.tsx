@@ -1,24 +1,75 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Check, Copy, Loader2, Share2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowRight,
+  Check,
+  Copy,
+  FileText,
+  Globe2,
+  Loader2,
+  Search,
+  Share2,
+  Sparkles,
+  Target,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CountUp from "react-countup";
 import { WaitlistOrb } from "./waitlist-orb";
 import { cn } from "@/lib/utils";
 
-/* -------------------------------------------------------------------------- */
-/* Constants                                                                   */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Tunable constants                                                         */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 const TAGLINES = [
   "An unfair advantage, quietly arriving.",
   "Intelligence, before instinct.",
   "Stop guessing what to launch.",
+  "Real research. Real angles. Real verdicts.",
 ];
 const TAGLINE_INTERVAL_MS = 4000;
 const COUNT_POLL_MS = 30_000;
+const RECENT_POLL_MS = 45_000;
+const RECENT_ROTATE_MS = 4500;
+
+/**
+ * Public-facing counter math. Real signups + a configurable baseline + a
+ * configurable daily drift. Lets the operator anchor the count somewhere
+ * that doesn't read as "1 person signed up so far" in the first weeks of a
+ * launch, without flat-out fabricating data.
+ *
+ * Set in Vercel:
+ *   NEXT_PUBLIC_WAITLIST_BASELINE       default 0
+ *   NEXT_PUBLIC_WAITLIST_DAILY_DRIFT    default 0 (extra signups per day)
+ *   NEXT_PUBLIC_WAITLIST_LAUNCH_DATE    YYYY-MM-DD; required for drift
+ *
+ * Admin dashboard always shows real numbers — only the public page applies
+ * these adjustments. Position math: displayed = real + baseline. Count
+ * math: displayed = real + baseline + (days-since-launch × drift).
+ */
+const BASELINE = Number(process.env.NEXT_PUBLIC_WAITLIST_BASELINE ?? "0") || 0;
+const DAILY_DRIFT =
+  Number(process.env.NEXT_PUBLIC_WAITLIST_DAILY_DRIFT ?? "0") || 0;
+const LAUNCH_DATE = process.env.NEXT_PUBLIC_WAITLIST_LAUNCH_DATE ?? null;
+
+function displayedCount(realCount: number): number {
+  let drift = 0;
+  if (DAILY_DRIFT > 0 && LAUNCH_DATE) {
+    const launch = new Date(`${LAUNCH_DATE}T00:00:00Z`).getTime();
+    const days = Math.max(0, Math.floor((Date.now() - launch) / 86_400_000));
+    drift = days * DAILY_DRIFT;
+  }
+  return realCount + BASELINE + drift;
+}
+function displayedPosition(realPosition: number): number {
+  return realPosition + BASELINE;
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Top-level page                                                            */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 type FormState =
   | { kind: "idle" }
@@ -26,15 +77,13 @@ type FormState =
   | { kind: "success"; position: number; referralCode: string; alreadyOnList: boolean }
   | { kind: "error"; message: string };
 
-/* -------------------------------------------------------------------------- */
-/* Top-level page                                                              */
-/* -------------------------------------------------------------------------- */
+type RecentRow = { email: string; source: string; createdAt: string };
 
 export function WaitlistPage() {
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div className="relative min-h-screen w-full overflow-x-hidden">
       <WaitlistBackground />
-      <main className="relative flex h-full w-full flex-col items-center justify-between px-6 py-[8vh]">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-between gap-10 px-5 pb-10 pt-8 sm:gap-12 sm:px-6 sm:pt-10 md:gap-14 md:pt-14">
         <BrandMark />
         <CenterStack />
         <FooterMark />
@@ -43,15 +92,15 @@ export function WaitlistPage() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Background canvas                                                           */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Background canvas                                                         */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function WaitlistBackground() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       style={{ contain: "strict" }}
     >
       <div className="absolute inset-0 bg-[#FCFCFD] dark:bg-[#0A0B1F]" />
@@ -97,7 +146,6 @@ function WaitlistBackground() {
           willChange: "transform",
         }}
       />
-      {/* Noise overlay */}
       <div
         className="absolute inset-0 mix-blend-overlay opacity-[0.03] dark:opacity-[0.06]"
         style={{
@@ -107,7 +155,6 @@ function WaitlistBackground() {
           backgroundSize: "240px 240px",
         }}
       />
-      {/* Center-out vignette — strongest at corners */}
       <div
         className="absolute inset-0"
         style={{
@@ -137,15 +184,15 @@ function WaitlistBackground() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Zone 1: brand mark                                                          */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Brand mark                                                                */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function BrandMark() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ opacity: 0.8 }}
+      animate={{ opacity: 0.85 }}
       transition={{ duration: 0.8 }}
       className="flex items-center gap-2"
     >
@@ -173,36 +220,48 @@ function BrandMark() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* The center stack — orb, headline, tagline, form, counter                    */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Center stack                                                              */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function CenterStack() {
   return (
-    <div className="flex w-full max-w-2xl flex-col items-center gap-8">
-      <div className="hidden sm:block">
-        <WaitlistOrb size={280} />
-      </div>
-      <div className="sm:hidden">
-        <WaitlistOrb size={220} />
-      </div>
+    <div className="flex w-full flex-col items-center gap-10 sm:gap-12">
+      <OrbWrap />
       <HeadlineAndTagline />
+      <UnlockPreview />
       <SignupForm />
-      <LiveCounter />
+      <LiveSocialProof />
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Headline + rotating tagline                                                 */
-/* -------------------------------------------------------------------------- */
+function OrbWrap() {
+  // Tier the orb size to viewport so mobile doesn't get crowded.
+  return (
+    <>
+      <div className="hidden md:block">
+        <WaitlistOrb size={300} />
+      </div>
+      <div className="hidden sm:block md:hidden">
+        <WaitlistOrb size={240} />
+      </div>
+      <div className="sm:hidden">
+        <WaitlistOrb size={200} />
+      </div>
+    </>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Headline + rotating tagline                                               */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function HeadlineAndTagline() {
   const reduce = useReducedMotion();
   const headline = "Something is coming.";
   const chars = useMemo(() => Array.from(headline), [headline]);
 
-  // Tagline rotator — fixed to first tagline if reduced motion.
   const [taglineIdx, setTaglineIdx] = useState(0);
   useEffect(() => {
     if (reduce) return;
@@ -216,8 +275,9 @@ function HeadlineAndTagline() {
   return (
     <div className="text-center">
       <h1
-        className="font-serif text-3xl leading-[1.0] tracking-[-0.02em] text-text md:text-5xl"
+        className="font-serif leading-[1.0] tracking-[-0.02em] text-text"
         aria-label={headline}
+        style={{ fontSize: "clamp(2.5rem, 8vw, 5.25rem)" }}
       >
         {reduce ? (
           <span>{headline}</span>
@@ -227,7 +287,9 @@ function HeadlineAndTagline() {
             animate="show"
             variants={{
               hidden: {},
-              show: { transition: { staggerChildren: 0.025, delayChildren: 0.3 } },
+              show: {
+                transition: { staggerChildren: 0.025, delayChildren: 0.3 },
+              },
             }}
             aria-hidden
           >
@@ -237,10 +299,10 @@ function HeadlineAndTagline() {
                 <motion.span
                   key={i}
                   variants={{
-                    hidden: { opacity: 0, y: 12 },
+                    hidden: { opacity: 0, y: 14 },
                     show: { opacity: 1, y: 0 },
                   }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                   className={cn(
                     "inline-block",
                     isPeriod &&
@@ -257,7 +319,7 @@ function HeadlineAndTagline() {
       </h1>
 
       <div
-        className="relative mt-6 h-7 text-base text-text-muted md:h-8 md:text-xl"
+        className="relative mx-auto mt-5 h-7 max-w-md text-base text-text-muted md:mt-6 md:h-9 md:text-xl"
         aria-live="polite"
       >
         {reduce ? (
@@ -270,7 +332,7 @@ function HeadlineAndTagline() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 mx-auto block max-w-md font-serif italic"
+              className="absolute inset-0 block font-serif italic"
             >
               {TAGLINES[taglineIdx]}
             </motion.span>
@@ -281,9 +343,62 @@ function HeadlineAndTagline() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Signup form — 4 states (idle / loading / success / error)                  */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* "What you unlock" — 3-item value preview strip                            */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+const UNLOCKS: { icon: React.ElementType; title: string; body: string }[] = [
+  {
+    icon: Search,
+    title: "Real web research",
+    body: "Gemini reads Reddit, Amazon, forums — cited.",
+  },
+  {
+    icon: Target,
+    title: "Ready-to-ship angles",
+    body: "Hooks, scripts, captions — pre-written.",
+  },
+  {
+    icon: FileText,
+    title: "14-page dossier",
+    body: "Customer voice + launch playbook + sources.",
+  },
+];
+
+function UnlockPreview() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.4 }}
+      className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3"
+    >
+      {UNLOCKS.map((u) => {
+        const Icon = u.icon;
+        return (
+          <div
+            key={u.title}
+            className="glass flex items-start gap-3 rounded-2xl p-4 backdrop-blur-2xl"
+          >
+            <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-aurora-purple/12">
+              <Icon className="h-3.5 w-3.5 text-aurora-purple" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-text">{u.title}</div>
+              <div className="mt-0.5 text-xs leading-snug text-text-muted">
+                {u.body}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </motion.div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Signup form                                                               */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function SignupForm() {
   const [state, setState] = useState<FormState>({ kind: "idle" });
@@ -293,7 +408,6 @@ function SignupForm() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shakeKey = useRef(0);
 
-  // Read ?ref= from URL on mount.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -318,7 +432,10 @@ function SignupForm() {
         body: JSON.stringify({
           email: trimmed,
           referralCode: referralCode ?? undefined,
-          source: typeof document !== "undefined" ? document.referrer || "organic" : "organic",
+          source:
+            typeof document !== "undefined"
+              ? document.referrer || "organic"
+              : "organic",
         }),
       });
       const data = await res.json();
@@ -326,8 +443,7 @@ function SignupForm() {
         shakeKey.current++;
         setState({
           kind: "error",
-          message:
-            data?.error?.message ?? "Couldn't add you — try again?",
+          message: data?.error?.message ?? "Couldn't add you — try again?",
         });
         return;
       }
@@ -363,7 +479,7 @@ function SignupForm() {
       initial={state.kind === "error" ? { x: -6 } : false}
       animate={state.kind === "error" ? { x: [-6, 6, -4, 4, 0] } : { x: 0 }}
       transition={{ duration: 0.4 }}
-      className="glass w-full max-w-md rounded-3xl p-6 backdrop-blur-2xl"
+      className="glass relative w-full max-w-xl rounded-3xl p-5 backdrop-blur-2xl sm:p-7"
       style={{
         boxShadow:
           "0 30px 60px -20px rgba(91,141,255,0.30), inset 0 1px 0 0 var(--surface-glass-highlight)",
@@ -379,11 +495,17 @@ function SignupForm() {
           <span className="text-text-muted">×</span>
         </button>
       )}
+
       <label htmlFor="waitlist-email" className="sr-only">
         Email address
       </label>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-        Get early access
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          Get early access
+        </div>
+        <div className="hidden text-xs text-text-dim sm:block">
+          Free · no card required
+        </div>
       </div>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input
@@ -413,12 +535,10 @@ function SignupForm() {
           type="submit"
           disabled={state.kind === "loading"}
           aria-label="Join the waitlist"
-          className={cn(
-            "group inline-flex h-14 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-medium text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-80",
-          )}
+          className="group relative inline-flex h-14 items-center justify-center gap-2 rounded-2xl px-7 text-base font-medium text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-80"
           style={{
             background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-            boxShadow: "0 10px 30px -10px rgba(167,136,255,0.6)",
+            boxShadow: "0 14px 40px -10px rgba(167,136,255,0.65)",
           }}
         >
           {state.kind === "loading" ? (
@@ -434,16 +554,16 @@ function SignupForm() {
       {state.kind === "error" && (
         <p className="mt-2 text-xs text-aurora-peach">{state.message}</p>
       )}
-      <p className="mt-3 text-center text-xs text-text-dim">
+      <p className="mt-3 text-center text-xs text-text-dim sm:text-left">
         By joining, you accept early access. No spam. Unsubscribe anytime.
       </p>
     </motion.form>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Success card                                                                */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Success card                                                              */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function SuccessCard({
   position,
@@ -458,6 +578,7 @@ function SuccessCard({
     typeof window !== "undefined"
       ? `${window.location.origin}/?ref=${referralCode}`
       : `https://wynner.app/?ref=${referralCode}`;
+  const display = displayedPosition(position);
 
   function copy() {
     if (typeof navigator === "undefined" || !navigator.clipboard) return;
@@ -467,7 +588,9 @@ function SuccessCard({
 
   function share() {
     if (typeof navigator !== "undefined" && "share" in navigator) {
-      void (navigator as Navigator & { share: (data: ShareData) => Promise<void> })
+      void (
+        navigator as Navigator & { share: (data: ShareData) => Promise<void> }
+      )
         .share({
           title: "Wynner — Early access",
           text: "Real-time AI product intelligence for dropshippers. Join the waitlist:",
@@ -485,7 +608,7 @@ function SuccessCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="glass w-full max-w-md rounded-3xl p-6 backdrop-blur-2xl"
+      className="glass w-full max-w-xl rounded-3xl p-6 backdrop-blur-2xl sm:p-8"
       style={{
         boxShadow:
           "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.35), inset 0 1px 0 0 var(--surface-glass-highlight)",
@@ -495,16 +618,16 @@ function SuccessCard({
     >
       <div className="flex flex-col items-center text-center">
         <CheckmarkBurst />
-        <h2 className="mt-5 font-serif text-2xl text-text">
+        <h2 className="mt-5 font-serif text-2xl text-text sm:text-3xl">
           {alreadyOnList ? "Already in." : "You're in."}
         </h2>
         <p className="mt-2 text-base text-text-muted">
-          {alreadyOnList ? "You were already on the list at " : "You're "}
+          {alreadyOnList ? "You were on the list at " : "You're "}
           <span className="font-mono tabular-nums text-text">#</span>
           <span className="font-mono tabular-nums text-text">
-            <CountUp end={position} duration={1.2} useEasing separator="," />
+            <CountUp end={display} duration={1.4} useEasing separator="," />
           </span>
-          {alreadyOnList ? "." : " on the waitlist."}
+          {alreadyOnList ? "." : " in line."}
         </p>
 
         <motion.p
@@ -581,68 +704,144 @@ function CheckmarkBurst() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Live counter — polls /api/waitlist/count every 30s, pauses when tab hidden */
-/* -------------------------------------------------------------------------- */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Live counter + recently-joined ticker                                     */
+/* ──────────────────────────────────────────────────────────────────────── */
 
-function LiveCounter() {
-  const [count, setCount] = useState<number | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
+function LiveSocialProof() {
+  const [realCount, setRealCount] = useState<number | null>(null);
+  const [recent, setRecent] = useState<RecentRow[]>([]);
+  const [tickerIdx, setTickerIdx] = useState(0);
 
-  const fetchCount = async () => {
+  const fetchCount = useCallback(async () => {
     try {
       const res = await fetch("/api/waitlist/count");
       if (!res.ok) return;
       const data = (await res.json()) as { count: number };
-      setCount(data.count);
-      setUpdatedAt(Date.now());
+      setRealCount(data.count);
     } catch {
       /* swallow */
     }
-  };
+  }, []);
+
+  const fetchRecent = useCallback(async () => {
+    try {
+      const res = await fetch("/api/waitlist/recent");
+      if (!res.ok) return;
+      const data = (await res.json()) as { rows: RecentRow[] };
+      setRecent(data.rows);
+    } catch {
+      /* swallow */
+    }
+  }, []);
 
   useEffect(() => {
     void fetchCount();
-    let id: number | null = window.setInterval(() => {
+    void fetchRecent();
+    let cId: number | null = window.setInterval(() => {
       if (document.visibilityState === "visible") void fetchCount();
     }, COUNT_POLL_MS);
+    let rId: number | null = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchRecent();
+    }, RECENT_POLL_MS);
     const onVis = () => {
-      if (document.visibilityState === "visible") void fetchCount();
+      if (document.visibilityState === "visible") {
+        void fetchCount();
+        void fetchRecent();
+      }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
-      if (id) window.clearInterval(id);
-      id = null;
+      if (cId) window.clearInterval(cId);
+      if (rId) window.clearInterval(rId);
+      cId = null;
+      rId = null;
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [fetchCount, fetchRecent]);
 
-  const secondsAgo = Math.floor((Date.now() - updatedAt) / 1000);
+  useEffect(() => {
+    if (recent.length === 0) return;
+    const id = window.setInterval(() => {
+      setTickerIdx((i) => (i + 1) % recent.length);
+    }, RECENT_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [recent.length]);
+
+  const display = realCount === null ? null : displayedCount(realCount);
+  const noun = display === 1 ? "operator" : "operators";
+  const tickerRow = recent[tickerIdx];
 
   return (
-    <div
-      className="text-center text-sm text-text-muted"
-      title={`Updated ${secondsAgo}s ago`}
-    >
-      <span aria-hidden className="text-aurora-purple">
-        ✦
-      </span>{" "}
-      <span className="font-mono tabular-nums text-text">
-        {count === null ? "—" : <CountUp end={count} duration={1} preserveValue />}
-      </span>{" "}
-      operators waiting
+    <div className="flex w-full max-w-xl flex-col items-center gap-3">
+      <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-4 py-1.5 text-sm text-text-muted backdrop-blur-md">
+        <span
+          aria-hidden
+          className="inline-flex h-1.5 w-1.5 rounded-full bg-aurora-green shadow-[0_0_8px_rgba(61,214,140,0.8)] [animation:wl-livedot_2s_ease-in-out_infinite] motion-reduce:animate-none"
+        />
+        <span className="font-mono tabular-nums text-text">
+          {display === null ? (
+            "—"
+          ) : (
+            <CountUp end={display} duration={1.2} preserveValue separator="," />
+          )}
+        </span>
+        <span>{noun} on the list</span>
+      </div>
+
+      <div className="relative h-6 w-full max-w-md overflow-hidden text-center">
+        <AnimatePresence mode="wait">
+          {tickerRow && (
+            <motion.div
+              key={`${tickerRow.email}-${tickerIdx}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-text-dim"
+            >
+              <Sparkles className="h-3 w-3 text-aurora-purple" />
+              <span>
+                {tickerRow.email} joined {relativeShort(tickerRow.createdAt)}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <style jsx>{`
+        @keyframes wl-livedot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.6; }
+        }
+      `}</style>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Footer mark — bottom of screen                                              */
-/* -------------------------------------------------------------------------- */
+function relativeShort(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Footer mark                                                               */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function FooterMark() {
   return (
-    <div className="text-center text-xs text-text-dim">
-      Built quietly in Zagreb. Early access opens in waves.
+    <div className="flex flex-col items-center gap-1 text-center text-xs text-text-dim">
+      <div className="flex items-center gap-1.5">
+        <Globe2 className="h-3 w-3" />
+        <span>Built quietly in Zagreb. Early access opens in waves.</span>
+      </div>
     </div>
   );
 }
