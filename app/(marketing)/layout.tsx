@@ -44,7 +44,7 @@ export const metadata: Metadata = inWaitlistMode
       openGraph: {
         title: "Wynner — Something is coming",
         description: "Early access to the unfair advantage.",
-        url: "https://wynner.app",
+        url: "https://wynnerlabs.com",
         siteName: "Wynner",
         images: [{ url: "/og-waitlist", width: 1200, height: 630 }],
         locale: "en_US",
@@ -66,7 +66,7 @@ export const metadata: Metadata = inWaitlistMode
         title: "Wynner — Know before you launch",
         description:
           "AI-powered product intelligence for dropshippers. Score products, get hook angles, and ship winners.",
-        url: "https://wynner.app",
+        url: "https://wynnerlabs.com",
         siteName: "Wynner",
         images: [
           {
@@ -105,7 +105,7 @@ const structuredData = {
   name: "Wynner",
   description:
     "AI-powered product intelligence for dropshippers. Score products against your target country in 60 seconds.",
-  url: "https://wynner.app",
+  url: "https://wynnerlabs.com",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: [

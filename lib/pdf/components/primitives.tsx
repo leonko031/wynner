@@ -250,7 +250,7 @@ export function PdfFooter({ pageNumber, totalPages, date }: { pageNumber: number
       }}
       fixed
     >
-      <Text style={[styles.tableHeader, { color: PDF_COLORS.inkWhisper }]}>wynner.app</Text>
+      <Text style={[styles.tableHeader, { color: PDF_COLORS.inkWhisper }]}>wynnerlabs.com</Text>
       <Text style={[styles.tableHeader, { color: PDF_COLORS.inkWhisper }]}>{date}</Text>
       <Text style={[styles.tableHeader, { color: PDF_COLORS.inkWhisper }]}>
         {pageNumber} / {totalPages}

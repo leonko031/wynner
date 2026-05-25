@@ -193,7 +193,7 @@ function CoverPage({ report }: { report: DeepResearchReport }) {
           Prepared on {generatedDate}
         </Text>
         <Text style={[styles.miniLabel, { color: PDF_COLORS.inkWhisper, marginTop: 4 }]}>
-          wynner.app · Deep Research
+          wynnerlabs.com · Deep Research
         </Text>
       </View>
     </Page>

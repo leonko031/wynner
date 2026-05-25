@@ -33,7 +33,7 @@ when sending — leave those exactly as written.
           Didn't sign up? Ignore this email and we'll forget about it.
         </td></tr>
       </table>
-      <div style="margin-top:14px;font-size:11px;color:#9DA0BF;">© 2026 Wynner · <a href="https://wynner.app" style="color:#5B8DFF;text-decoration:none;">wynner.app</a></div>
+      <div style="margin-top:14px;font-size:11px;color:#9DA0BF;">© 2026 Wynner · <a href="https://wynnerlabs.com" style="color:#5B8DFF;text-decoration:none;">wynnerlabs.com</a></div>
     </td></tr>
   </table>
 </body>
@@ -66,7 +66,7 @@ when sending — leave those exactly as written.
           <p style="font-size:12px;line-height:1.55;color:#9DA0BF;margin:16px 0 0;">Or paste this link into your browser:<br/><a href="{{ .ConfirmationURL }}" style="color:#5B8DFF;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
         </td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #E6E6F0;font-size:11px;color:#9DA0BF;text-align:center;">
-          © 2026 Wynner · <a href="https://wynner.app" style="color:#5B8DFF;text-decoration:none;">wynner.app</a>
+          © 2026 Wynner · <a href="https://wynnerlabs.com" style="color:#5B8DFF;text-decoration:none;">wynnerlabs.com</a>
         </td></tr>
       </table>
     </td></tr>

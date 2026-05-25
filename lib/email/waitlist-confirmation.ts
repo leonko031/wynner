@@ -12,7 +12,7 @@ export function buildWaitlistConfirmationEmail(opts: {
   referralCode: string;
   origin?: string;
 }): { subject: string; html: string; text: string } {
-  const origin = opts.origin ?? "https://wynner.app";
+  const origin = opts.origin ?? "https://wynnerlabs.com";
   const referralUrl = `${origin}/?ref=${opts.referralCode}`;
   const subject = `You're in — Wynner waitlist position #${opts.position}`;
 
@@ -120,7 +120,7 @@ export function buildWaitlistConfirmationEmail(opts: {
           <tr>
             <td style="padding:18px 40px 28px 40px;text-align:center;font-size:11px;color:#9DA0BF;line-height:1.5;">
               You're receiving this because you joined the Wynner waitlist.<br/>
-              <a href="${escapeAttr(origin)}" style="color:#9DA0BF;text-decoration:underline;">wynner.app</a>
+              <a href="${escapeAttr(origin)}" style="color:#9DA0BF;text-decoration:underline;">wynnerlabs.com</a>
             </td>
           </tr>
         </table>

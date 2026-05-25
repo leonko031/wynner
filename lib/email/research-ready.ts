@@ -44,7 +44,7 @@ Top angle: ${v.topAngle}
 Full PDF attached.
 
 — Wynner
-https://wynner.app`;
+https://wynnerlabs.com`;
 
   const html = `<!doctype html>
 <html lang="en">
@@ -94,7 +94,7 @@ https://wynner.app`;
           <tr>
             <td style="padding:16px 28px;border-top:1px solid #E6E6F0;font-size:11px;color:#9DA0BF;text-align:center;">
               Generated ${escape(new Date(report.generatedAt).toLocaleString())} ·
-              <a href="https://wynner.app/dashboard" style="color:#5B8DFF;text-decoration:none;">Open dashboard</a>
+              <a href="https://wynnerlabs.com/dashboard" style="color:#5B8DFF;text-decoration:none;">Open dashboard</a>
             </td>
           </tr>
         </table>

@@ -32,12 +32,12 @@ Use the symbols:
   - ☐ Medium top-up (75 credits)
   - ☐ Large top-up (200 credits)
   - ☐ Mega top-up (500 credits)
-- ☐ Stripe webhook endpoint registered: `https://wynner.app/api/webhooks/stripe`
+- ☐ Stripe webhook endpoint registered: `https://wynnerlabs.com/api/webhooks/stripe`
 - ☐ TODO in `app/api/webhooks/stripe/route.ts` resolved — look up user from `session.client_reference_id` and apply the granted credits/plan.
 
 ### Google OAuth (optional)
 - ☐ OAuth client created in Google Console.
-- ☐ Production redirect URI added: `https://wynner.app/auth/callback`.
+- ☐ Production redirect URI added: `https://wynnerlabs.com/auth/callback`.
 - ☐ Consent screen status: **published** (not Testing).
 - ☐ Authorized in Supabase Auth → Providers → Google.
 
@@ -168,7 +168,7 @@ These are tracked in PRELAUNCH_AUDIT.md but require larger follow-up passes:
 
 - ☐ Sentry DSN configured (`SENTRY_DSN`)
 - ☐ Vercel Analytics enabled on the project
-- ☐ Uptime monitor on `https://wynner.app/api/health` (returns `{ok: true}` when healthy)
+- ☐ Uptime monitor on `https://wynnerlabs.com/api/health` (returns `{ok: true}` when healthy)
 - ☐ Stripe webhook delivery dashboard — verify successful 200s on test events
 
 ## 8 — Legal

@@ -539,7 +539,7 @@ function SuccessCard({
   const refUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/?ref=${referralCode}`
-      : `https://wynner.app/?ref=${referralCode}`;
+      : `https://wynnerlabs.com/?ref=${referralCode}`;
   const display = displayedPosition(position);
 
   function copy() {

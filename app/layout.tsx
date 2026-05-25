@@ -36,7 +36,7 @@ export const metadata: Metadata = {
       "Premium dropshipping intelligence. Score products, see saturation, and ship winners with confidence.",
     images: ["/og.png"],
   },
-  metadataBase: new URL("https://wynner.app"),
+  metadataBase: new URL("https://wynnerlabs.com"),
 };
 
 export default async function RootLayout({
