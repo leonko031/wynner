@@ -5,13 +5,10 @@ import {
   ArrowRight,
   Check,
   Copy,
-  FileText,
   Globe2,
   Loader2,
-  Search,
   Share2,
   Sparkles,
-  Target,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -46,8 +43,7 @@ const RECENT_ROTATE_MS = 4500;
  *   NEXT_PUBLIC_WAITLIST_LAUNCH_DATE    YYYY-MM-DD; required for drift
  *
  * Admin dashboard always shows real numbers — only the public page applies
- * these adjustments. Position math: displayed = real + baseline. Count
- * math: displayed = real + baseline + (days-since-launch × drift).
+ * these adjustments.
  */
 const BASELINE = Number(process.env.NEXT_PUBLIC_WAITLIST_BASELINE ?? "0") || 0;
 const DAILY_DRIFT =
@@ -70,20 +66,34 @@ function displayedPosition(realPosition: number): number {
 /* ──────────────────────────────────────────────────────────────────────── */
 /* Top-level page                                                            */
 /* ──────────────────────────────────────────────────────────────────────── */
+/*                                                                           */
+/* v3 layout principle: ONE VIEWPORT. No scrolling on any device. The form  */
+/* is the visual anchor — it sits front-and-center, never below the fold.   */
+/* Three flex bands distribute the chrome (brand → center → footer) using   */
+/* 100svh so iOS Safari's URL bar doesn't push us past the edge.            */
+/*                                                                           */
 
 type FormState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "success"; position: number; referralCode: string; alreadyOnList: boolean }
+  | {
+      kind: "success";
+      position: number;
+      referralCode: string;
+      alreadyOnList: boolean;
+    }
   | { kind: "error"; message: string };
 
 type RecentRow = { email: string; source: string; createdAt: string };
 
 export function WaitlistPage() {
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden">
+    <div className="relative w-full overflow-hidden">
       <WaitlistBackground />
-      <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-between gap-10 px-5 pb-10 pt-8 sm:gap-12 sm:px-6 sm:pt-10 md:gap-14 md:pt-14">
+      <main
+        className="relative mx-auto flex w-full max-w-2xl flex-col items-center justify-between px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6"
+        style={{ minHeight: "100svh" }}
+      >
         <BrandMark />
         <CenterStack />
         <FooterMark />
@@ -221,15 +231,17 @@ function BrandMark() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* Center stack                                                              */
+/* Center stack — orb + headline + form + counter, evenly distributed       */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function CenterStack() {
+  // flex-1 + justify-center keeps the stack vertically centered between the
+  // brand mark above and the footer below — so the form lands at the optical
+  // center of the viewport regardless of phone size.
   return (
-    <div className="flex w-full flex-col items-center gap-10 sm:gap-12">
+    <div className="flex w-full flex-1 flex-col items-center justify-center gap-5 py-4 sm:gap-7">
       <OrbWrap />
       <HeadlineAndTagline />
-      <UnlockPreview />
       <SignupForm />
       <LiveSocialProof />
     </div>
@@ -237,17 +249,19 @@ function CenterStack() {
 }
 
 function OrbWrap() {
-  // Tier the orb size to viewport so mobile doesn't get crowded.
+  // Smaller tiers in v3 — the v2 orb (300/240/200) ate too much of the
+  // mobile viewport and pushed the form below the fold. These sizes keep
+  // the orb iconic without dominating.
   return (
     <>
       <div className="hidden md:block">
-        <WaitlistOrb size={300} />
-      </div>
-      <div className="hidden sm:block md:hidden">
         <WaitlistOrb size={240} />
       </div>
+      <div className="hidden sm:block md:hidden">
+        <WaitlistOrb size={210} />
+      </div>
       <div className="sm:hidden">
-        <WaitlistOrb size={200} />
+        <WaitlistOrb size={170} />
       </div>
     </>
   );
@@ -277,7 +291,7 @@ function HeadlineAndTagline() {
       <h1
         className="font-serif leading-[1.0] tracking-[-0.02em] text-text"
         aria-label={headline}
-        style={{ fontSize: "clamp(2.5rem, 8vw, 5.25rem)" }}
+        style={{ fontSize: "clamp(2rem, 6.5vw, 4rem)" }}
       >
         {reduce ? (
           <span>{headline}</span>
@@ -319,7 +333,7 @@ function HeadlineAndTagline() {
       </h1>
 
       <div
-        className="relative mx-auto mt-5 h-7 max-w-md text-base text-text-muted md:mt-6 md:h-9 md:text-xl"
+        className="relative mx-auto mt-3 h-6 max-w-md text-sm text-text-muted sm:mt-4 sm:h-7 sm:text-base"
         aria-live="polite"
       >
         {reduce ? (
@@ -344,60 +358,7 @@ function HeadlineAndTagline() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* "What you unlock" — 3-item value preview strip                            */
-/* ──────────────────────────────────────────────────────────────────────── */
-
-const UNLOCKS: { icon: React.ElementType; title: string; body: string }[] = [
-  {
-    icon: Search,
-    title: "Real web research",
-    body: "Gemini reads Reddit, Amazon, forums — cited.",
-  },
-  {
-    icon: Target,
-    title: "Ready-to-ship angles",
-    body: "Hooks, scripts, captions — pre-written.",
-  },
-  {
-    icon: FileText,
-    title: "14-page dossier",
-    body: "Customer voice + launch playbook + sources.",
-  },
-];
-
-function UnlockPreview() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.4 }}
-      className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3"
-    >
-      {UNLOCKS.map((u) => {
-        const Icon = u.icon;
-        return (
-          <div
-            key={u.title}
-            className="glass flex items-start gap-3 rounded-2xl p-4 backdrop-blur-2xl"
-          >
-            <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-aurora-purple/12">
-              <Icon className="h-3.5 w-3.5 text-aurora-purple" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-text">{u.title}</div>
-              <div className="mt-0.5 text-xs leading-snug text-text-muted">
-                {u.body}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </motion.div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────── */
-/* Signup form                                                               */
+/* Signup form — single horizontal glass pill (input + gradient button)     */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function SignupForm() {
@@ -472,6 +433,9 @@ function SignupForm() {
     );
   }
 
+  // The pill: a single rounded-full glass container holding the input and
+  // the gradient submit button side-by-side. No stacking on mobile — the
+  // button text shrinks to "Join" below sm so it still fits.
   return (
     <motion.form
       onSubmit={submit}
@@ -479,19 +443,15 @@ function SignupForm() {
       initial={state.kind === "error" ? { x: -6 } : false}
       animate={state.kind === "error" ? { x: [-6, 6, -4, 4, 0] } : { x: 0 }}
       transition={{ duration: 0.4 }}
-      className="glass relative w-full max-w-xl rounded-3xl p-5 backdrop-blur-2xl sm:p-7"
-      style={{
-        boxShadow:
-          "0 30px 60px -20px rgba(91,141,255,0.30), inset 0 1px 0 0 var(--surface-glass-highlight)",
-      }}
+      className="flex w-full max-w-xl flex-col items-center gap-2"
     >
       {referralCode && !refBumpAcknowledged && (
         <button
           type="button"
           onClick={() => setRefBumpAcknowledged(true)}
-          className="mb-4 inline-flex w-full items-center justify-between gap-2 rounded-2xl border border-aurora-purple/40 bg-aurora-purple/10 px-3 py-2 text-left text-xs text-text"
+          className="inline-flex items-center gap-2 rounded-full border border-aurora-purple/40 bg-aurora-purple/10 px-3 py-1 text-[11px] text-text"
         >
-          <span>🎁 Invited by an operator — you start with a bonus spot.</span>
+          <span>🎁 Invited — you start with a bonus spot.</span>
           <span className="text-text-muted">×</span>
         </button>
       )}
@@ -499,15 +459,17 @@ function SignupForm() {
       <label htmlFor="waitlist-email" className="sr-only">
         Email address
       </label>
-      <div className="flex items-center justify-between gap-3">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-          Get early access
-        </div>
-        <div className="hidden text-xs text-text-dim sm:block">
-          Free · no card required
-        </div>
-      </div>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+
+      <div
+        className={cn(
+          "glass relative flex h-14 w-full items-center gap-1 overflow-hidden rounded-full p-1 backdrop-blur-2xl",
+          state.kind === "error" && "ring-1 ring-aurora-peach",
+        )}
+        style={{
+          boxShadow:
+            "0 24px 50px -16px rgba(91,141,255,0.30), inset 0 1px 0 0 var(--surface-glass-highlight)",
+        }}
+      >
         <input
           ref={inputRef}
           id="waitlist-email"
@@ -524,39 +486,39 @@ function SignupForm() {
           }}
           disabled={state.kind === "loading"}
           className={cn(
-            "h-14 flex-1 rounded-2xl border bg-transparent px-5 text-base text-text outline-none transition-colors",
-            "border-border-soft hover:border-aurora-purple/40 focus:border-aurora-purple",
-            "focus:shadow-[0_0_0_4px_rgba(167,136,255,0.18)]",
+            "h-full min-w-0 flex-1 bg-transparent px-5 text-base text-text outline-none",
             "placeholder:text-text-dim",
-            state.kind === "error" && "border-aurora-peach",
           )}
         />
         <button
           type="submit"
           disabled={state.kind === "loading"}
           aria-label="Join the waitlist"
-          className="group relative inline-flex h-14 items-center justify-center gap-2 rounded-2xl px-7 text-base font-medium text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-80"
+          className="group relative inline-flex h-full shrink-0 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-80 sm:px-6 sm:text-base"
           style={{
             background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-            boxShadow: "0 14px 40px -10px rgba(167,136,255,0.65)",
+            boxShadow: "0 10px 30px -8px rgba(167,136,255,0.65)",
           }}
         >
           {state.kind === "loading" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
-              Join the waitlist
+              <span className="hidden sm:inline">Join the waitlist</span>
+              <span className="sm:hidden">Join</span>
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </>
           )}
         </button>
       </div>
-      {state.kind === "error" && (
-        <p className="mt-2 text-xs text-aurora-peach">{state.message}</p>
-      )}
-      <p className="mt-3 text-center text-xs text-text-dim sm:text-left">
-        By joining, you accept early access. No spam. Unsubscribe anytime.
-      </p>
+
+      <div className="flex h-4 items-center text-[11px] text-text-dim">
+        {state.kind === "error" ? (
+          <span className="text-aurora-peach">{state.message}</span>
+        ) : (
+          <span>Free · no card required · unsubscribe anytime</span>
+        )}
+      </div>
     </motion.form>
   );
 }
@@ -608,7 +570,7 @@ function SuccessCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="glass w-full max-w-xl rounded-3xl p-6 backdrop-blur-2xl sm:p-8"
+      className="glass w-full max-w-xl rounded-3xl p-5 backdrop-blur-2xl sm:p-7"
       style={{
         boxShadow:
           "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.35), inset 0 1px 0 0 var(--surface-glass-highlight)",
@@ -618,10 +580,10 @@ function SuccessCard({
     >
       <div className="flex flex-col items-center text-center">
         <CheckmarkBurst />
-        <h2 className="mt-5 font-serif text-2xl text-text sm:text-3xl">
+        <h2 className="mt-4 font-serif text-2xl text-text sm:text-3xl">
           {alreadyOnList ? "Already in." : "You're in."}
         </h2>
-        <p className="mt-2 text-base text-text-muted">
+        <p className="mt-1.5 text-sm text-text-muted sm:text-base">
           {alreadyOnList ? "You were on the list at " : "You're "}
           <span className="font-mono tabular-nums text-text">#</span>
           <span className="font-mono tabular-nums text-text">
@@ -634,7 +596,7 @@ function SuccessCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.4 }}
-          className="mt-6 text-sm text-text-muted"
+          className="mt-4 text-xs text-text-muted sm:text-sm"
         >
           Want to move up? Share with operators who&apos;d love this.
         </motion.p>
@@ -643,7 +605,7 @@ function SuccessCard({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.4 }}
-          className="mt-4 flex w-full items-center gap-1 rounded-2xl border border-border-soft bg-surface/70 p-1.5"
+          className="mt-3 flex w-full items-center gap-1 rounded-full border border-border-soft bg-surface/70 p-1.5"
         >
           <code className="flex-1 truncate px-2 font-mono text-[11px] text-text-muted">
             {refUrl}
@@ -652,7 +614,7 @@ function SuccessCard({
             type="button"
             onClick={copy}
             aria-label="Copy link"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-text-muted hover:bg-surface hover:text-text"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text"
           >
             <Copy className="h-3.5 w-3.5" />
           </button>
@@ -660,12 +622,12 @@ function SuccessCard({
             type="button"
             onClick={share}
             aria-label="Share link"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-text-muted hover:bg-surface hover:text-text"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text"
           >
             <Share2 className="h-3.5 w-3.5" />
           </button>
         </motion.div>
-        <p className="mt-3 text-xs text-text-dim">
+        <p className="mt-2 text-[11px] text-text-dim">
           Each signup from your link bumps you up 5 spots.
         </p>
       </div>
@@ -676,7 +638,7 @@ function SuccessCard({
 function CheckmarkBurst() {
   return (
     <motion.div
-      className="relative flex h-14 w-14 items-center justify-center rounded-full"
+      className="relative flex h-12 w-12 items-center justify-center rounded-full"
       style={{
         background:
           "radial-gradient(closest-side, rgba(61,214,140,0.35), transparent 70%)",
@@ -693,19 +655,19 @@ function CheckmarkBurst() {
         }}
       />
       <motion.div
-        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-aurora-green/20"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full bg-aurora-green/20"
         initial={{ scale: 0.5 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 240, damping: 20 }}
       >
-        <Check className="h-6 w-6 text-aurora-green" strokeWidth={2.5} />
+        <Check className="h-5 w-5 text-aurora-green" strokeWidth={2.5} />
       </motion.div>
     </motion.div>
   );
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* Live counter + recently-joined ticker                                     */
+/* Live counter + recently-joined ticker — one compact row                  */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function LiveSocialProof() {
@@ -773,8 +735,8 @@ function LiveSocialProof() {
   const tickerRow = recent[tickerIdx];
 
   return (
-    <div className="flex w-full max-w-xl flex-col items-center gap-3">
-      <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-4 py-1.5 text-sm text-text-muted backdrop-blur-md">
+    <div className="flex w-full max-w-xl flex-col items-center gap-2">
+      <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 text-xs text-text-muted backdrop-blur-md sm:text-sm">
         <span
           aria-hidden
           className="inline-flex h-1.5 w-1.5 rounded-full bg-aurora-green shadow-[0_0_8px_rgba(61,214,140,0.8)] [animation:wl-livedot_2s_ease-in-out_infinite] motion-reduce:animate-none"
@@ -789,19 +751,19 @@ function LiveSocialProof() {
         <span>{noun} on the list</span>
       </div>
 
-      <div className="relative h-6 w-full max-w-md overflow-hidden text-center">
+      <div className="relative h-4 w-full max-w-md overflow-hidden text-center">
         <AnimatePresence mode="wait">
           {tickerRow && (
             <motion.div
               key={`${tickerRow.email}-${tickerIdx}`}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-text-dim"
+              className="absolute inset-0 flex items-center justify-center gap-1.5 text-[11px] text-text-dim"
             >
-              <Sparkles className="h-3 w-3 text-aurora-purple" />
-              <span>
+              <Sparkles className="h-2.5 w-2.5 text-aurora-purple" />
+              <span className="truncate">
                 {tickerRow.email} joined {relativeShort(tickerRow.createdAt)}
               </span>
             </motion.div>
@@ -837,11 +799,9 @@ function relativeShort(iso: string): string {
 
 function FooterMark() {
   return (
-    <div className="flex flex-col items-center gap-1 text-center text-xs text-text-dim">
-      <div className="flex items-center gap-1.5">
-        <Globe2 className="h-3 w-3" />
-        <span>Built quietly in Zagreb. Early access opens in waves.</span>
-      </div>
+    <div className="flex items-center gap-1.5 text-[11px] text-text-dim">
+      <Globe2 className="h-3 w-3" />
+      <span>Built quietly in Zagreb. Early access opens in waves.</span>
     </div>
   );
 }
