@@ -20,13 +20,22 @@ import { cn } from "@/lib/utils";
 /* Tunable constants                                                         */
 /* ──────────────────────────────────────────────────────────────────────── */
 
+/**
+ * Benefit-driven rotation. Tells visitors what they're actually signing up
+ * for so the page doesn't read as "join the mystery list." Each line is
+ * one concrete outcome — short enough to read at a glance, specific
+ * enough to make the value land.
+ */
 const TAGLINES = [
-  "An unfair advantage, quietly arriving.",
-  "Intelligence, before instinct.",
-  "Stop guessing what to launch.",
-  "Real research. Real angles. Real verdicts.",
+  "Score any product in 60 seconds.",
+  "Real customer voice from Reddit & Amazon.",
+  "8 ready-to-paste ad angles, every scan.",
+  "Pre-written hooks, scripts, and captions.",
+  "Know if it'll win — before you spend a euro.",
+  "14-day launch playbook, included.",
+  "Real sources. No hallucinations.",
 ];
-const TAGLINE_INTERVAL_MS = 4000;
+const TAGLINE_INTERVAL_MS = 4500;
 const COUNT_POLL_MS = 30_000;
 const RECENT_POLL_MS = 45_000;
 const RECENT_ROTATE_MS = 4500;
@@ -274,7 +283,11 @@ function OrbWrap() {
 function HeadlineAndTagline() {
   const reduce = useReducedMotion();
   const headline = "Something is coming.";
-  const chars = useMemo(() => Array.from(headline), [headline]);
+  // Split into words so we can keep each one as a non-breaking group —
+  // otherwise the per-character inline-block animation lets the browser
+  // break mid-word (we saw "comin g." on narrow phones). Each char still
+  // animates individually inside its word wrapper.
+  const words = useMemo(() => headline.split(" "), [headline]);
 
   const [taglineIdx, setTaglineIdx] = useState(0);
   useEffect(() => {
@@ -286,10 +299,14 @@ function HeadlineAndTagline() {
     return () => window.clearInterval(id);
   }, [reduce]);
 
+  // Flat per-character stagger index so the wave still flows across the
+  // whole line, not per-word.
+  let charIdx = 0;
+
   return (
     <div className="text-center">
       <h1
-        className="font-serif leading-[1.0] tracking-[-0.02em] text-text"
+        className="font-serif leading-[1.05] tracking-[-0.02em] text-text"
         aria-label={headline}
         style={{ fontSize: "clamp(2rem, 6.5vw, 4rem)" }}
       >
@@ -307,27 +324,37 @@ function HeadlineAndTagline() {
             }}
             aria-hidden
           >
-            {chars.map((c, i) => {
-              const isPeriod = c === ".";
-              return (
-                <motion.span
-                  key={i}
-                  variants={{
-                    hidden: { opacity: 0, y: 14 },
-                    show: { opacity: 1, y: 0 },
-                  }}
-                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                  className={cn(
-                    "inline-block",
-                    isPeriod &&
-                      "bg-gradient-to-br from-aurora-blue via-aurora-purple to-aurora-pink bg-clip-text text-transparent",
-                  )}
-                  style={c === " " ? { whiteSpace: "pre" } : undefined}
-                >
-                  {c}
-                </motion.span>
-              );
-            })}
+            {words.map((word, wi) => (
+              <span
+                key={wi}
+                className="inline-block whitespace-nowrap"
+              >
+                {Array.from(word).map((c) => {
+                  const isPeriod = c === ".";
+                  charIdx++;
+                  return (
+                    <motion.span
+                      key={charIdx}
+                      variants={{
+                        hidden: { opacity: 0, y: 14 },
+                        show: { opacity: 1, y: 0 },
+                      }}
+                      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                      className={cn(
+                        "inline-block",
+                        isPeriod &&
+                          "bg-gradient-to-br from-aurora-blue via-aurora-purple to-aurora-pink bg-clip-text text-transparent",
+                      )}
+                    >
+                      {c}
+                    </motion.span>
+                  );
+                })}
+                {wi < words.length - 1 && (
+                  <span style={{ whiteSpace: "pre" }}> </span>
+                )}
+              </span>
+            ))}
           </motion.span>
         )}
       </h1>
