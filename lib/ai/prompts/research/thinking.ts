@@ -62,5 +62,10 @@ export function thinkingFor(
         `Weighing margin, demand, competition, and creative potential…`,
         `Surfacing the red flags worth knowing before you spend a dollar.`,
       ];
+    default:
+      // Exhaustive switch — TS can't narrow ResearchStageId perfectly when
+      // new stages are added without updating this file. Return an empty
+      // commentary set rather than undefined.
+      return [];
   }
 }
