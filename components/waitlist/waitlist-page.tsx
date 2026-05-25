@@ -128,9 +128,12 @@ function AdminBackdoor() {
       href="/auth"
       aria-label="Admin sign in"
       title="Admin sign in"
-      className="group fixed bottom-4 right-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface/40 px-3 py-1.5 text-[11px] font-medium text-text-dim opacity-50 backdrop-blur-md transition-all hover:bg-surface/80 hover:text-text-muted hover:opacity-100 sm:bottom-5 sm:right-5"
+      className="group fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full border border-aurora-purple/30 bg-surface/70 px-3.5 py-2 text-xs font-medium text-text-muted backdrop-blur-md transition-all hover:border-aurora-purple/60 hover:bg-surface hover:text-text sm:bottom-6 sm:right-6"
+      style={{
+        boxShadow: "0 4px 16px -4px rgba(167,136,255,0.25)",
+      }}
     >
-      <Lock className="h-3 w-3 transition-transform group-hover:scale-110" />
+      <Lock className="h-3.5 w-3.5 text-aurora-purple transition-transform group-hover:scale-110" />
       <span>Admin</span>
     </Link>
   );
