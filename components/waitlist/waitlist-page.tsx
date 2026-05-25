@@ -7,9 +7,11 @@ import {
   Copy,
   Globe2,
   Loader2,
+  Lock,
   Share2,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CountUp from "react-countup";
@@ -107,7 +109,30 @@ export function WaitlistPage() {
         <CenterStack />
         <FooterMark />
       </main>
+      <AdminBackdoor />
     </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Admin backdoor — discreet sign-in link bottom-right.                      */
+/* Lets the operator log into the real app while the public still sees the  */
+/* waitlist. Low opacity by default; lifts to full on hover. Routes through  */
+/* the standard /auth flow, which after success drops admins into the       */
+/* dashboard via the existing Supabase middleware.                          */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+function AdminBackdoor() {
+  return (
+    <Link
+      href="/auth"
+      aria-label="Admin sign in"
+      title="Admin sign in"
+      className="group fixed bottom-4 right-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface/40 px-3 py-1.5 text-[11px] font-medium text-text-dim opacity-50 backdrop-blur-md transition-all hover:bg-surface/80 hover:text-text-muted hover:opacity-100 sm:bottom-5 sm:right-5"
+    >
+      <Lock className="h-3 w-3 transition-transform group-hover:scale-110" />
+      <span>Admin</span>
+    </Link>
   );
 }
 
