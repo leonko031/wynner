@@ -27,35 +27,65 @@ const instrumentSerif = Instrument_Serif({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title:
-    "Wynner — Know before you launch | AI product intelligence for dropshippers",
-  description:
-    "Score any dropshipping product against your target country in 60 seconds. Real web research. Real customer voice. Real hook angles. Start free.",
-  openGraph: {
-    title: "Wynner — Know before you launch",
-    description:
-      "AI-powered product intelligence for dropshippers. Score products, get hook angles, and ship winners.",
-    url: "https://wynner.app",
-    siteName: "Wynner",
-    images: [
-      {
-        url: "/marketing/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Wynner — AI product intelligence for dropshippers",
+/**
+ * Metadata changes based on whether we're in waitlist mode. When
+ * NEXT_PUBLIC_WAITLIST_MODE=true the title is intentionally ambiguous and
+ * the OG image points at the dynamic /og-waitlist route. Flip to false +
+ * redeploy when launching the full marketing landing.
+ */
+const inWaitlistMode =
+  (process.env.NEXT_PUBLIC_WAITLIST_MODE ?? "true").toLowerCase() !== "false";
+
+export const metadata: Metadata = inWaitlistMode
+  ? {
+      title: "Wynner — Something is coming",
+      description:
+        "Early access to the unfair advantage. Join the operators waiting.",
+      openGraph: {
+        title: "Wynner — Something is coming",
+        description: "Early access to the unfair advantage.",
+        url: "https://wynner.app",
+        siteName: "Wynner",
+        images: [{ url: "/og-waitlist", width: 1200, height: 630 }],
+        locale: "en_US",
+        type: "website",
       },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Wynner — Know before you launch",
-    description: "AI product intelligence for dropshippers.",
-    images: ["/marketing/og-image.png"],
-  },
-};
+      twitter: {
+        card: "summary_large_image",
+        title: "Wynner — Something is coming",
+        description: "Early access to the unfair advantage.",
+        images: ["/og-waitlist"],
+      },
+    }
+  : {
+      title:
+        "Wynner — Know before you launch | AI product intelligence for dropshippers",
+      description:
+        "Score any dropshipping product against your target country in 60 seconds. Real web research. Real customer voice. Real hook angles. Start free.",
+      openGraph: {
+        title: "Wynner — Know before you launch",
+        description:
+          "AI-powered product intelligence for dropshippers. Score products, get hook angles, and ship winners.",
+        url: "https://wynner.app",
+        siteName: "Wynner",
+        images: [
+          {
+            url: "/marketing/og-image.png",
+            width: 1200,
+            height: 630,
+            alt: "Wynner — AI product intelligence for dropshippers",
+          },
+        ],
+        locale: "en_US",
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Wynner — Know before you launch",
+        description: "AI product intelligence for dropshippers.",
+        images: ["/marketing/og-image.png"],
+      },
+    };
 
 export const viewport: Viewport = {
   themeColor: [
@@ -113,13 +143,18 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // The waitlist page renders its own background canvas (different drift
+  // pattern, higher opacity). Skipping the marketing canvas here avoids
+  // layering two animated meshes on top of each other.
   return (
     <div className={`relative min-h-screen ${instrumentSerif.variable}`}>
-      <MarketingCanvas />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      {!inWaitlistMode && <MarketingCanvas />}
+      {!inWaitlistMode && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      )}
       {children}
     </div>
   );
