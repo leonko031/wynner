@@ -10,6 +10,7 @@ import { UserProvider } from "@/lib/auth/user-provider";
 import { CreditProfileSync } from "@/components/auth/credit-profile-sync";
 import { AdminOnlyToast } from "@/components/auth/admin-only-toast";
 import { getServerUser } from "@/lib/auth/server-user";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -72,6 +73,10 @@ export default async function RootLayout({
           </div>
         </UserProvider>
         <Toaster position="top-right" richColors closeButton />
+        {/* Vercel Analytics — no-ops in development, fires events only in
+            production. Enable the feature in the Vercel dashboard
+            (Project → Analytics → Enable) for data to start collecting. */}
+        <Analytics />
       </body>
     </html>
   );
