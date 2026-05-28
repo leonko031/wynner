@@ -198,10 +198,10 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
       initial={false}
       animate={shake ? { x: [-4, 4, -3, 3, -2, 2, 0] } : { x: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="glass-strong relative w-full max-w-md rounded-3xl p-6 md:p-8"
+      className="relative w-full max-w-md rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl md:p-9"
       style={{
         boxShadow:
-          "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.30), inset 0 1px 0 0 var(--surface-glass-highlight)",
+          "0 24px 60px -24px rgba(0,0,0,0.45), inset 0 1px 0 0 rgba(255,255,255,0.04)",
       }}
     >
       {!supabaseReady && <SetupBanner />}
@@ -250,15 +250,15 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-6"
+          className="mb-7"
         >
-          <h1 className="text-3xl font-medium tracking-tight text-text md:text-4xl">
-            {mode === "signin" ? "Welcome back" : "Let's get you started"}
+          <h1 className="font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-text md:text-5xl">
+            {mode === "signin" ? "Welcome back." : "Let's get you set up."}
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-2.5 text-sm text-text-muted">
             {mode === "signin"
-              ? "Sign in to your dashboard"
-              : "Free forever, no card required"}
+              ? "Pick up where you left off."
+              : "Free to start. No card required."}
           </p>
         </motion.div>
       </AnimatePresence>
@@ -420,7 +420,7 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
           type={magicMode ? "button" : "submit"}
           onClick={magicMode ? handleMagicLink : undefined}
           disabled={submitting || magicSending}
-          className="group relative inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-sm font-medium text-white shadow-[0_12px_32px_-8px_rgba(91,141,255,0.55)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-80"
+          className="group relative inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-sm font-medium text-white shadow-[0_10px_28px_-10px_rgba(167,136,255,0.50)] transition-all hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-80"
           style={{
             background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
           }}
