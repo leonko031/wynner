@@ -63,13 +63,22 @@ export function isGeminiAvailable(): boolean {
 }
 
 /**
- * Grounding (Google Search tool) is opt-out. Costs ~$0.035 per grounded call
- * and adds 5-15s of latency, so we expose a flag for the rare situations
- * where the operator wants to fall back to ungrounded behavior (e.g. a
- * development environment where they're spamming scans).
+ * Grounding (Google Search tool) is OPT-IN as of the v3 stability pass.
+ * Reason: grounding requires a paid-tier Gemini key + working billing setup,
+ * and silently fails with cryptic 400s when the key/billing isn't right —
+ * making scans look "broken" even though the ungrounded path works fine.
+ *
+ * Set GEMINI_GROUNDING_ENABLED=true in Vercel to flip it on once you've
+ * confirmed grounding works for your account (see docs/GROUNDING_DEBUG_LOG.md
+ * for verification steps).
+ *
+ * Default off → every "grounded" call goes straight to ungroundedFallback,
+ * which calls Gemini in plain JSON mode. Works with ANY Gemini key. Scans
+ * complete reliably with verdicts, hook angles, and the full pipeline —
+ * just without cited live web sources.
  */
 export function isGroundingEnabled(): boolean {
-  return (process.env.GEMINI_GROUNDING_ENABLED ?? "true").toLowerCase() !== "false";
+  return (process.env.GEMINI_GROUNDING_ENABLED ?? "false").toLowerCase() === "true";
 }
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -379,93 +388,32 @@ export async function geminiWithGrounding<T>(opts: {
       };
     } catch (err) {
       lastError = err;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      const errName = err instanceof Error ? err.name : "unknown";
       gdebug(`${label} attempt ${attempt + 1} — exception`, {
-        name: errName,
-        message: errMsg,
+        name: err instanceof Error ? err.name : "unknown",
+        message: err instanceof Error ? err.message : String(err),
       });
-      // ALWAYS log the actual exception to production logs (not just under
-      // GEMINI_DEBUG) so we can diagnose grounding failures without needing
-      // an env var flip + redeploy cycle. We log in CHUNKS because Vercel's
-      // log viewer truncates each message at ~30 chars in the table view —
-      // splitting into many short lines lets us reconstruct the full text by
-      // searching for unique substrings.
-      const keyPrefix = (process.env.GEMINI_API_KEY ?? "").slice(0, 10);
-      const keySuffix = (process.env.GEMINI_API_KEY ?? "").slice(-4);
-      // eslint-disable-next-line no-console
-      console.error(
-        `[gemwrap] ${label} a${attempt + 1} kFP=${keyPrefix}…${keySuffix} ename=${errName}`,
-      );
-      // Split the actual error message into 60-char chunks so each fits the
-      // log viewer. Tag with sequence so they can be reassembled.
-      const chunks: string[] = [];
-      for (let i = 0; i < Math.min(errMsg.length, 480); i += 60) {
-        chunks.push(errMsg.slice(i, i + 60));
-      }
-      chunks.forEach((c, i) => {
-        // eslint-disable-next-line no-console
-        console.error(`[gemwrap] ${label} a${attempt + 1} m${i + 1}/${chunks.length}: ${c}`);
-      });
-      // Free-tier Gemini keys cannot use Google Search grounding — every
-      // grounded call returns a 400/PERMISSION_DENIED. Detect that distinct
-      // failure mode and bail immediately with a useful message. Retrying or
-      // falling back to ungrounded would silently mask the real problem
-      // ("Offline mode for this stage" everywhere, forever, with no fix).
-      if (isFreeTierGroundingError(errMsg)) {
-        // eslint-disable-next-line no-console
-        console.error(
-          `[geminiWithGrounding] ${label}: GEMINI_FREE_TIER — Google Search grounding requires a paid Gemini API key. Upgrade at https://aistudio.google.com/app/apikey, or set GEMINI_GROUNDING_ENABLED=false to skip grounding entirely.`,
-        );
-        throw new Error(
-          "GEMINI_FREE_TIER: Your Gemini API key can't use Google Search grounding (paid tier required). Upgrade at https://aistudio.google.com/app/apikey, or set GEMINI_GROUNDING_ENABLED=false to run scans without sources.",
-        );
-      }
     }
   }
 
-  // Both attempts failed (and the error wasn't the free-tier signature).
-  // Log + fall back to ungrounded so the pipeline continues. The orchestrator
-  // marks the section's confidence "low" and the UI shows the "Offline mode
-  // for this stage" indicator.
-  gdebug(`${label} — all grounded attempts failed, falling back to ungrounded`, {
-    finalError: lastError instanceof Error ? lastError.message : String(lastError),
-  });
+  // All grounded attempts failed. Log once + fall back to ungrounded so the
+  // pipeline ALWAYS produces a usable result. The orchestrator marks the
+  // section's confidence "low" and the UI shows a neutral "Analyzed offline"
+  // label. Critical invariant: this wrapper must NEVER throw — every code
+  // path returns a valid GroundedCallResult so scans complete end-to-end.
   // eslint-disable-next-line no-console
   console.error(
-    `[geminiWithGrounding] ${label}: all attempts failed, falling back to ungrounded`,
-    lastError instanceof Error ? lastError.message : String(lastError),
+    `[geminiWithGrounding] ${label}: grounded attempts failed, using ungrounded fallback. err=${(
+      lastError instanceof Error ? lastError.message : String(lastError)
+    ).slice(0, 300)}`,
   );
   return ungroundedFallback<T>(modelName, opts.prompt, opts.schema, started, "retries_exhausted");
 }
 
-/**
- * Heuristic: does this error message look like the Gemini API rejecting a
- * grounded call because the key is on the free tier? Free-tier keys return
- * a 400 / PERMISSION_DENIED when `tools: [{ googleSearch: {} }]` is set,
- * with messages mentioning "Search Grounding", "not supported", or
- * "PERMISSION_DENIED". We match defensively across phrasings.
- */
-function isFreeTierGroundingError(msg: string): boolean {
-  const lower = msg.toLowerCase();
-  const looksLikePermission =
-    lower.includes("permission_denied") ||
-    lower.includes("permission denied") ||
-    lower.includes(" 403") ||
-    lower.includes("status: 403") ||
-    lower.includes("status: 400");
-  const mentionsGrounding =
-    lower.includes("grounding") ||
-    lower.includes("google search") ||
-    lower.includes("googlesearch") ||
-    lower.includes("search retrieval") ||
-    lower.includes("free tier") ||
-    lower.includes("free-tier") ||
-    lower.includes("paid tier") ||
-    lower.includes("not supported") ||
-    lower.includes("billing");
-  return looksLikePermission && mentionsGrounding;
-}
+/* Removed: free-tier classifier + chunked diagnostic logging.
+ * They were diagnostic scaffolding that made things worse — throwing on
+ * permission errors prevented the ungrounded fallback from running,
+ * leaving stages with null data. With grounding now OPT-IN (default
+ * false), the failure path is rarely hit anyway. */
 
 async function ungroundedFallback<T>(
   modelName: string,

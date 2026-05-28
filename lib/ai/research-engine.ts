@@ -286,8 +286,12 @@ async function runGroundedStage<T>(opts: {
       await sleep(70);
     }
 
+    // Neutral label when the stage ran without live web search. With
+    // grounding now opt-in (default off), "fellBackToUngrounded: true" is
+    // the normal happy-path state, so we treat it as such rather than
+    // making it look like a failure.
     const sourceLabel = result.fellBackToUngrounded
-      ? "Offline mode for this stage"
+      ? "Analyzed offline"
       : `${result.sources.length} sources · ${result.searchQueries.length} queries`;
     emit({
       type: "stage_completed",
@@ -305,18 +309,15 @@ async function runGroundedStage<T>(opts: {
       },
     };
   } catch (err) {
+    // The grounded wrapper now never throws — it always falls back to
+    // ungrounded. So this catch only fires if the ungrounded fallback itself
+    // throws (schema validation or a hard Gemini error). Treat as a real
+    // stage failure and emit the raw message for diagnosis.
     const rawMessage = err instanceof Error ? err.message : String(err);
-    // Surface the free-tier-key error in plain English so the UI can show
-    // a clear "upgrade your key" hint instead of a generic "stage failed".
-    // The wrapper throws with the GEMINI_FREE_TIER: prefix when it detects
-    // a permission error from Gemini that's specifically about grounding.
-    const isFreeTier = rawMessage.startsWith("GEMINI_FREE_TIER:");
     emit({
       type: "stage_failed",
       stage: opts.stage,
-      error: isFreeTier
-        ? "Your Gemini API key can't use Google Search grounding (paid tier required). Upgrade at https://aistudio.google.com/app/apikey, or set GEMINI_GROUNDING_ENABLED=false to run scans without sources."
-        : rawMessage,
+      error: rawMessage,
       usedFallback: true,
     });
     return {
