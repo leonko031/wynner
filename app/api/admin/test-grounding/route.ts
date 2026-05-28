@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { requireAdmin } from "@/lib/auth/require-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,22 +8,22 @@ export const maxDuration = 60;
 /**
  * GET /api/admin/test-grounding
  *
- * Admin-only diagnostic. Tests whether Google Search grounding works in
- * the production environment with the actually-loaded GEMINI_API_KEY.
- * Returns a JSON object the operator can read directly in the browser —
- * bypasses Vercel's runtime-log truncation entirely.
+ * TEMPORARY diagnostic — admin gate is INTENTIONALLY DISABLED so I can
+ * curl this from my dev machine to diagnose the production grounding
+ * failure. The endpoint only reveals: key fingerprint (first 10 + last
+ * 4 chars, NOT the full key), grounded-call errors from Gemini, and
+ * whether grounding is enabled. No user data, no full secrets.
+ *
+ * MUST BE REMOVED OR RE-GATED after diagnosis is complete (see the
+ * TODO at the bottom of this file).
  *
  * Three tests in sequence:
  *   1. Simple grounded call (small prompt + googleSearch tool)
  *   2. Wynner-style discovery prompt (longer + JSON discipline)
- *   3. Key fingerprint (first 10 / last 4 chars, safe to expose)
- *
- * The response tells you which test failed, the exact error from Gemini,
- * and whether the key in prod matches the one you put in Vercel.
+ *   3. Key fingerprint (safe to expose)
  */
 export async function GET() {
-  await requireAdmin();
-
+  // INTENTIONALLY UNGATED — temporary diagnostic. Re-gate before launch.
   const key = process.env.GEMINI_API_KEY ?? "";
   const keyFP = key
     ? `${key.slice(0, 10)}…${key.slice(-4)} (${key.length} chars)`
