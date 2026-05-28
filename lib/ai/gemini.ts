@@ -380,10 +380,18 @@ export async function geminiWithGrounding<T>(opts: {
     } catch (err) {
       lastError = err;
       const errMsg = err instanceof Error ? err.message : String(err);
+      const errName = err instanceof Error ? err.name : "unknown";
       gdebug(`${label} attempt ${attempt + 1} — exception`, {
-        name: err instanceof Error ? err.name : "unknown",
+        name: errName,
         message: errMsg,
       });
+      // ALWAYS log the actual exception to production logs (not just under
+      // GEMINI_DEBUG) so we can diagnose grounding failures without needing
+      // an env var flip + redeploy cycle. Truncate to keep log volume sane.
+      // eslint-disable-next-line no-console
+      console.error(
+        `[geminiWithGrounding] ${label} attempt ${attempt + 1} EXCEPTION (${errName}): ${errMsg.slice(0, 500)}`,
+      );
       // Free-tier Gemini keys cannot use Google Search grounding — every
       // grounded call returns a 400/PERMISSION_DENIED. Detect that distinct
       // failure mode and bail immediately with a useful message. Retrying or
