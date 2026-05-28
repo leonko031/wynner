@@ -1,4 +1,21 @@
-import { Activity, BarChart3, Crown, Database, Shield, Users } from "lucide-react";
+import {
+  Activity,
+  ArrowUpRight,
+  BarChart3,
+  CreditCard,
+  Crown,
+  Database,
+  FileText,
+  GitCompare,
+  Layout,
+  LayoutDashboard,
+  LineChart,
+  Settings as SettingsIcon,
+  Shield,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   createSupabaseAdminClient,
@@ -102,6 +119,71 @@ export default async function AdminPage() {
           value={`€${fmt(stats.mrrEstimate)}`}
           sub={`${fmt(stats.proCount)} Pro · ${fmt(stats.operatorCount)} Operator`}
         />
+      </section>
+
+      {/* Previews — every redesigned surface in one place */}
+      <section className="mt-12">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-aurora-purple" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+            New design — preview
+          </span>
+        </div>
+        <h2 className="mt-2 font-serif text-2xl font-medium tracking-[-0.01em] md:text-3xl">
+          See every redesigned surface
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-text-muted">
+          Public visitors still only see the waitlist. As admin, you can preview
+          every other page from here — including the full marketing landing that
+          launches publicly when you flip the waitlist flag.
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+          {PREVIEWS.map((p) => {
+            const Icon = p.icon;
+            return (
+              <Link
+                key={p.href}
+                href={p.href}
+                className="group relative overflow-hidden rounded-2xl border border-border-soft bg-surface-elevated/90 p-5 backdrop-blur-2xl transition-all hover:border-aurora-purple/40 hover:bg-surface-elevated"
+                style={{
+                  boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
+                }}
+              >
+                <div className="flex items-start justify-between">
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-xl"
+                    style={{
+                      backgroundColor: `${p.accent}1A`,
+                      color: p.accent,
+                      border: `1px solid ${p.accent}33`,
+                    }}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-text-dim transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text" />
+                </div>
+                <div className="mt-3 text-base font-medium tracking-tight text-text">
+                  {p.title}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                  {p.blurb}
+                </p>
+                {p.badge && (
+                  <span
+                    className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-white"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+                      boxShadow: "0 4px 12px -4px rgba(167,136,255,0.55)",
+                    }}
+                  >
+                    {p.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
       {/* Future sections */}
@@ -250,6 +332,78 @@ const FUTURE = [
   { title: "Scans", blurb: "Browse every scan + its raw output.", icon: Database, accent: "#A788FF" },
   { title: "Revenue", blurb: "Daily revenue + cohort retention charts.", icon: BarChart3, accent: "#FF89C5" },
   { title: "System logs", blurb: "API errors, slow queries, refunds.", icon: Activity, accent: "#3DD68C" },
+];
+
+/**
+ * Every redesigned surface, surfaced as a launcher card so the operator
+ * can audit the new look in one sweep. Order: marketing first (the big
+ * visual swing), then the daily-use product surfaces, then secondary.
+ */
+const PREVIEWS: {
+  href: string;
+  title: string;
+  blurb: string;
+  icon: React.ElementType;
+  accent: string;
+  badge?: string;
+}[] = [
+  {
+    href: "/admin/preview/landing",
+    title: "Marketing landing",
+    blurb: "Slite-style multi-section page — public when you flip the flag.",
+    icon: Layout,
+    accent: "#A788FF",
+    badge: "New",
+  },
+  {
+    href: "/dashboard",
+    title: "Dashboard",
+    blurb: "The daily-use surface — section dividers + editorial footer.",
+    icon: LayoutDashboard,
+    accent: "#5B8DFF",
+  },
+  {
+    href: "/scan",
+    title: "Scan flow",
+    blurb: "Run a deep research scan — refined cost preview.",
+    icon: Sparkles,
+    accent: "#FF89C5",
+  },
+  {
+    href: "/compare",
+    title: "Compare",
+    blurb: "Side-by-side product comparison with refined dialog.",
+    icon: GitCompare,
+    accent: "#3DD68C",
+  },
+  {
+    href: "/insights",
+    title: "Insights",
+    blurb: "Operator dashboard with labeled sections.",
+    icon: LineChart,
+    accent: "#5B8DFF",
+  },
+  {
+    href: "/settings",
+    title: "Settings",
+    blurb: "Profile, backups, prefs — every card on the new chrome.",
+    icon: SettingsIcon,
+    accent: "#A788FF",
+  },
+  {
+    href: "/credits",
+    title: "Credits & billing",
+    blurb: "Balance, usage, transactions — refreshed cards.",
+    icon: CreditCard,
+    accent: "#FF89C5",
+  },
+  {
+    href: "/pricing",
+    title: "Pricing",
+    blurb: "Public pricing page — also redesigned.",
+    icon: FileText,
+    accent: "#3DD68C",
+  },
 ];
 
 /* -------------------------------------------------------------------------- */
