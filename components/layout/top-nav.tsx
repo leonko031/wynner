@@ -49,7 +49,7 @@ export function TopNav() {
 
   return (
     <header
-      className="sticky top-0 z-40 h-14 w-full border-b border-border-soft glass-flat"
+      className="sticky top-0 z-40 h-14 w-full border-b border-border-soft/60 bg-surface-elevated/80 backdrop-blur-xl"
     >
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-5">
         {/* Left: wordmark */}
@@ -102,7 +102,13 @@ export function TopNav() {
                 {active && (
                   <motion.span
                     layoutId="nav-active-pill"
-                    className="absolute inset-0 -z-10 rounded-full bg-surface"
+                    className="absolute inset-0 -z-10 rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(91,141,255,0.10), rgba(167,136,255,0.14), rgba(255,137,197,0.10))",
+                      boxShadow:
+                        "inset 0 0 0 1px rgba(167,136,255,0.30), inset 0 1px 0 0 rgba(255,255,255,0.04)",
+                    }}
                     transition={{
                       type: "spring",
                       stiffness: 380,
