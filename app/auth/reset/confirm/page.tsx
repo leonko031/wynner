@@ -61,22 +61,24 @@ export default function ResetConfirmPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong w-full max-w-md rounded-3xl p-8"
+        className="w-full max-w-md rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl md:p-9"
         style={{
-          boxShadow:
-            "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.30)",
+          boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
         }}
       >
         {!isSupabaseConfigured() && <SetupBanner />}
 
-        <h1 className="text-3xl font-medium tracking-tight text-text">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          New password
+        </div>
+        <h1 className="mt-3 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-text md:text-5xl">
           Set a new password
         </h1>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="mt-3 text-sm text-text-muted md:text-base">
           Pick something you&apos;ll remember — but make it strong.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <PwField
             id="new-pw"
             label="New password"
@@ -106,7 +108,7 @@ export default function ResetConfirmPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-white shadow-[0_12px_32px_-8px_rgba(91,141,255,0.55)] hover:brightness-110 disabled:opacity-80"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-white shadow-[0_10px_28px_-10px_rgba(167,136,255,0.50)] hover:brightness-110 disabled:opacity-80"
             style={{ background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)" }}
           >
             {submitting ? "Updating…" : "Update password"}
@@ -136,7 +138,7 @@ function PwField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-text-dim">
+      <label htmlFor={id} className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         {label}
       </label>
       <div className="relative">

@@ -7,6 +7,8 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Crown,
+  FileText,
   Globe2,
   Megaphone,
   Play,
@@ -29,7 +31,34 @@ import {
 import { cn } from "@/lib/utils";
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* Reveal helpers — every section uses the same entrance pattern.           */
+/* Design vocabulary v2                                                     */
+/*                                                                          */
+/* Card chrome — replace heavy glass:                                       */
+/*   shell  : border border-border-soft bg-surface-elevated/90              */
+/*            backdrop-blur-2xl + soft drop shadow                          */
+/*   inline : border border-border-soft bg-surface/60                       */
+/*                                                                          */
+/* Aurora gradient — accent ONLY (CTAs, strikethrough word, dots, hero      */
+/* glow). Never on every card, never as full-bleed bg.                      */
+/*                                                                          */
+/* Typography — serif H1/H2 (font-medium, tight tracking), mono kickers     */
+/* (10px, 0.18em tracking), muted subheads.                                 */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+const CARD_SHELL =
+  "rounded-3xl border border-border-soft bg-surface-elevated/90 backdrop-blur-2xl";
+const CARD_INLINE =
+  "rounded-3xl border border-border-soft bg-surface/60 backdrop-blur-xl";
+const CARD_SHADOW = {
+  boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
+} as const;
+const AURORA_BG =
+  "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)" as const;
+const AURORA_TEXT =
+  "bg-gradient-to-br from-aurora-blue via-aurora-purple to-aurora-pink bg-clip-text text-transparent";
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Reveal helpers                                                           */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 const fadeUp: Variants = {
@@ -48,7 +77,7 @@ const stagger: Variants = {
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-aurora-purple">
+    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
       {children}
     </div>
   );
@@ -70,7 +99,7 @@ function SectionHeader({
   return (
     <div
       className={cn(
-        "mb-12",
+        "mb-14",
         align === "center" && "mx-auto max-w-3xl text-center",
         className,
       )}
@@ -78,14 +107,14 @@ function SectionHeader({
       {kicker && <Kicker>{kicker}</Kicker>}
       <motion.h2
         variants={fadeUp}
-        className="mt-3 font-serif text-4xl leading-[0.95] tracking-tight text-text md:text-5xl lg:text-6xl"
+        className="mt-4 font-serif text-3xl font-medium leading-[1.05] tracking-[-0.01em] text-text md:text-5xl"
       >
         {headline}
       </motion.h2>
       {subhead && (
         <motion.p
           variants={fadeUp}
-          className="mt-4 text-base leading-relaxed text-text-muted md:text-lg"
+          className="mt-5 text-base leading-relaxed text-text-muted md:text-lg"
         >
           {subhead}
         </motion.p>
@@ -102,7 +131,7 @@ export function MarketingLanding() {
   const [vslOpen, setVslOpen] = useState(false);
 
   return (
-    <main>
+    <main className="relative overflow-hidden">
       <MarketingNav />
       <Hero onOpenVsl={() => setVslOpen(true)} />
       <SocialProofStrip />
@@ -127,29 +156,43 @@ export function MarketingLanding() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* HERO                                                                     */
+/* HERO — big editorial headline with strikethrough trick word              */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
   const reduce = useReducedMotion();
 
-  // Per-word reveal of the headline. Two lines, six words total.
+  // Headline composition — Slite-style strikethrough on "guessing", aurora
+  // gradient on "knowing". Per-word reveal keeps the editorial cadence.
   const words = useMemo(
     () => [
-      { text: "Know", gradient: false },
-      { text: "before", gradient: false },
-      { text: "you", gradient: false, lineBreak: true },
-      { text: "launch", gradient: true },
-      { text: ".", gradient: true, attach: true },
+      { text: "Stop", gradient: false },
+      { text: "guessing.", gradient: false, strike: true, lineBreak: true },
+      { text: "Start", gradient: false },
+      { text: "knowing", gradient: true },
+      { text: "what", gradient: false, lineBreak: true },
+      { text: "to", gradient: false },
+      { text: "launch.", gradient: false },
     ],
     [],
   );
 
   return (
-    <section className="relative min-h-[calc(100vh-80px)] w-full px-6 pb-20 pt-16">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 lg:grid-cols-[1.2fr_1fr]">
+    <section className="relative w-full px-6 pb-24 pt-20 md:pb-32 md:pt-28">
+      {/* Single tasteful aurora wash anchored top-right of the hero */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 40% at 80% 15%, rgba(167,136,255,0.22), transparent 70%), radial-gradient(ellipse 45% 35% at 15% 80%, rgba(91,141,255,0.14), transparent 70%)",
+        }}
+      />
+
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 lg:grid-cols-[1.15fr_1fr]">
         {/* LEFT — editorial */}
         <div>
+          {/* Social proof badge — above the headline */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -157,21 +200,33 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
           >
             <Link
               href="/pricing"
-              className="group inline-flex items-center gap-2 rounded-full border border-aurora-purple/45 bg-aurora-purple/10 px-3 py-1 text-xs text-text backdrop-blur-md transition-all hover:border-aurora-purple/65"
+              className="group inline-flex items-center gap-2.5 rounded-full border border-border-soft bg-surface-elevated/80 px-3 py-1.5 text-xs text-text backdrop-blur-md transition-colors hover:border-aurora-purple/45"
             >
-              <Sparkles className="h-3 w-3 text-aurora-purple" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-aurora-purple">
-                NEW
+              <span
+                aria-hidden
+                className="relative flex h-1.5 w-1.5 items-center justify-center"
+              >
+                <span
+                  className="absolute inline-flex h-full w-full animate-pulse-glow rounded-full"
+                  style={{ background: AURORA_BG }}
+                />
+                <span
+                  className="relative inline-flex h-1.5 w-1.5 rounded-full"
+                  style={{ background: AURORA_BG }}
+                />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-dim">
+                New
               </span>
               <span className="text-text-muted">
-                AI-powered hook angles in every scan
+                AI hook angles in every scan
               </span>
-              <ArrowRight className="h-3 w-3 text-text-muted transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-3 w-3 text-text-dim transition-transform group-hover:translate-x-0.5" />
             </Link>
           </motion.div>
 
-          {/* Headline — word stagger */}
-          <h1 className="mt-6 font-serif leading-[0.95] tracking-tight text-text">
+          {/* Headline — per-word stagger, BIG */}
+          <h1 className="mt-7 font-serif font-medium leading-[1.0] tracking-[-0.02em] text-text">
             <motion.span
               initial="hidden"
               animate="show"
@@ -179,7 +234,7 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
                 hidden: {},
                 show: {
                   transition: {
-                    staggerChildren: reduce ? 0 : 0.12,
+                    staggerChildren: reduce ? 0 : 0.08,
                     delayChildren: 0.15,
                   },
                 },
@@ -196,13 +251,27 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   className={cn(
                     "inline-block",
-                    w.gradient &&
-                      "bg-gradient-to-r from-aurora-blue via-aurora-purple to-aurora-pink bg-clip-text text-transparent",
-                    !w.attach && "mr-3",
+                    w.gradient && AURORA_TEXT,
+                    w.strike && "relative",
+                    "mr-3",
                     w.lineBreak && "after:block after:content-['']",
                   )}
                 >
                   {w.text}
+                  {w.strike && (
+                    <motion.span
+                      aria-hidden
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{
+                        duration: 0.45,
+                        delay: 0.7,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="absolute left-0 right-0 top-[58%] h-[0.10em] origin-left rounded-full"
+                      style={{ background: AURORA_BG }}
+                    />
+                  )}
                 </motion.span>
               ))}
             </motion.span>
@@ -212,29 +281,30 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="mt-6 max-w-md text-lg leading-relaxed text-text-muted md:text-xl"
+            transition={{ duration: 0.5, delay: 0.7 }}
+            className="mt-7 max-w-xl text-base leading-relaxed text-text-muted md:text-lg"
           >
-            Wynner scores any dropshipping product against the country you&apos;re
-            selling in. Real web research. Real customer voice. Real hook
-            angles. In 60 seconds.
+            Wynner reads the web, mines real customer voice, and scores any
+            dropshipping product against the country you sell in — in 60
+            seconds. With cited sources and ready-to-paste ad angles.
           </motion.p>
 
-          {/* CTA row */}
+          {/* CTA row + inline email */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
+            transition={{ duration: 0.5, delay: 0.85 }}
             className="mt-10 flex flex-wrap items-center gap-3"
           >
             <Link
               href="/auth?mode=signup"
               className="group relative inline-flex h-14 items-center gap-2 rounded-full px-8 text-base font-medium text-white transition-all hover:brightness-110"
               style={{
-                background:
-                  "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-                boxShadow: "0 14px 40px -10px rgba(167,136,255,0.65)",
-                animation: reduce ? undefined : "hero-cta-pulse 4s ease-in-out infinite",
+                background: AURORA_BG,
+                boxShadow: "0 14px 40px -10px rgba(167,136,255,0.55)",
+                animation: reduce
+                  ? undefined
+                  : "hero-cta-pulse 4s ease-in-out infinite",
               }}
             >
               Start scanning free
@@ -243,7 +313,7 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
             <button
               type="button"
               onClick={onOpenVsl}
-              className="group inline-flex h-14 items-center gap-2 rounded-full border border-border-soft bg-surface/70 px-6 text-base text-text backdrop-blur-md transition-all hover:border-aurora-blue/55 hover:bg-aurora-blue/5"
+              className="group inline-flex h-14 items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-6 text-base text-text backdrop-blur-md transition-all hover:border-aurora-blue/45 hover:bg-surface-elevated/80"
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-aurora-blue/15">
                 <Play className="h-3 w-3 text-aurora-blue" fill="currentColor" />
@@ -256,35 +326,11 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 1.0 }}
-            className="mt-5 text-sm text-text-dim"
+            transition={{ duration: 0.4, delay: 1.05 }}
+            className="mt-5 font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim"
           >
-            ✦ 10 free credits to start · No card required · Cancel anytime
+            10 free credits · No card required · Cancel anytime
           </motion.p>
-
-          {/* Inline social proof pills */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.1 }}
-            className="mt-10 flex flex-wrap gap-3"
-          >
-            {[
-              { icon: "✦", text: "Used by 2,400+ operators" },
-              { icon: "★", text: "4.9 average rating" },
-              { icon: "🌍", text: "Scoring across 15 countries" },
-            ].map((pill) => (
-              <span
-                key={pill.text}
-                className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1.5 text-xs text-text backdrop-blur-md"
-              >
-                <span aria-hidden className="text-aurora-purple">
-                  {pill.icon}
-                </span>
-                {pill.text}
-              </span>
-            ))}
-          </motion.div>
         </div>
 
         {/* RIGHT — hero visual slot */}
@@ -296,8 +342,16 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
           className="relative group/hero"
         >
           <div
-            className="transition-transform duration-500 group-hover/hero:[transform:rotateY(0deg)_rotateX(0deg)_scale(1.02)]"
-            style={{ transform: "rotateY(-3deg) rotateX(2deg)", transformStyle: "preserve-3d" }}
+            className={cn(
+              "overflow-hidden rounded-3xl border border-border-soft bg-surface-elevated/90 p-2 backdrop-blur-2xl transition-transform duration-500",
+              "group-hover/hero:[transform:rotateY(0deg)_rotateX(0deg)_scale(1.02)]",
+            )}
+            style={{
+              transform: "rotateY(-3deg) rotateX(2deg)",
+              transformStyle: "preserve-3d",
+              boxShadow:
+                "0 30px 80px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(167,136,255,0.10)",
+            }}
           >
             <VideoSlot
               videoSrc="/marketing/hero-vsl.mp4"
@@ -316,9 +370,9 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5 }}
-        className="absolute inset-x-0 bottom-6 mx-auto flex justify-center"
+        className="absolute inset-x-0 bottom-8 mx-auto flex justify-center"
       >
-        <span className="flex flex-col items-center gap-1.5 text-text-muted">
+        <span className="flex flex-col items-center gap-1.5 text-text-dim">
           <span className="font-mono text-[10px] uppercase tracking-[0.2em]">
             scroll
           </span>
@@ -328,8 +382,8 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
 
       <style jsx>{`
         @keyframes hero-cta-pulse {
-          0%, 100% { box-shadow: 0 14px 40px -10px rgba(167,136,255,0.45); }
-          50% { box-shadow: 0 14px 50px -8px rgba(167,136,255,0.85); }
+          0%, 100% { box-shadow: 0 14px 40px -10px rgba(167,136,255,0.40); }
+          50% { box-shadow: 0 14px 50px -8px rgba(167,136,255,0.75); }
         }
       `}</style>
     </section>
@@ -337,29 +391,46 @@ function Hero({ onOpenVsl }: { onOpenVsl: () => void }) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* SOCIAL PROOF                                                             */
+/* CAPABILITY STRIP — horizontal benefits row directly under the hero       */
+/* (replaces the count-up social proof, which now lives further down)       */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function SocialProofStrip() {
   return (
-    <section className="relative w-full py-16">
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, transparent, rgba(167,136,255,0.04) 50%, transparent)",
-        }}
-      />
+    <section className="relative w-full px-6 py-20">
       <motion.div
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-80px" }}
         variants={stagger}
-        className="relative mx-auto max-w-7xl px-6 text-center"
+        className="mx-auto max-w-7xl"
       >
-        <motion.div variants={fadeUp}>
-          <Kicker>TRUSTED BY OPERATORS ACROSS 15 COUNTRIES</Kicker>
+        {/* Capability bullets row — small icons + concrete benefits */}
+        <motion.div
+          variants={fadeUp}
+          className="mb-16 flex flex-wrap items-center justify-center gap-x-10 gap-y-5 text-sm"
+        >
+          {[
+            { icon: Clock, label: "60-second deep research" },
+            { icon: Sparkles, label: "8 ready-to-paste hook angles" },
+            { icon: Globe2, label: "15 countries scored" },
+            { icon: FileText, label: "14-page cited dossier" },
+          ].map((c) => (
+            <span
+              key={c.label}
+              className="inline-flex items-center gap-2.5 text-text-muted"
+            >
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border-soft bg-surface/60">
+                <c.icon className="h-3.5 w-3.5 text-aurora-purple" />
+              </span>
+              <span className="text-text">{c.label}</span>
+            </span>
+          ))}
+        </motion.div>
+
+        {/* Counter strip — kept, restyled lighter */}
+        <motion.div variants={fadeUp} className="text-center">
+          <Kicker>Trusted by operators across 15 countries</Kicker>
         </motion.div>
         <motion.div
           variants={fadeUp}
@@ -367,12 +438,18 @@ function SocialProofStrip() {
         >
           {[
             { value: 12847, label: "products scored", prefix: "" },
-            { value: 2.4, label: "ad spend protected ($M)", prefix: "$", suffix: "M", decimals: 1 },
+            {
+              value: 2.4,
+              label: "ad spend protected ($M)",
+              prefix: "$",
+              suffix: "M",
+              decimals: 1,
+            },
             { value: 15, label: "countries", prefix: "" },
             { value: 94, label: "would recommend (%)", prefix: "", suffix: "%" },
           ].map((stat) => (
-            <div key={stat.label}>
-              <div className="font-serif text-4xl text-text md:text-5xl">
+            <div key={stat.label} className="text-center">
+              <div className="font-serif text-4xl font-medium tracking-[-0.01em] text-text md:text-5xl">
                 {stat.prefix}
                 <CountUp
                   end={stat.value}
@@ -384,7 +461,7 @@ function SocialProofStrip() {
                 />
                 {stat.suffix ?? ""}
               </div>
-              <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+              <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
                 {stat.label.replace(/\s\(.*\)/, "")}
               </div>
             </div>
@@ -410,13 +487,13 @@ function ProblemSection() {
         className="mx-auto max-w-6xl"
       >
         <SectionHeader
-          kicker="THE PROBLEM"
+          kicker="The problem"
           headline="You've been picking products like it's still 2019."
-          subhead="Spreadsheets. AliExpress browsing. Gut feeling. Then €300 ad spend on something that was doomed before you started. There's a better way to know."
+          subhead="Spreadsheets. AliExpress browsing. Gut feeling. Then €300 of ad spend on something that was doomed before you started. There's a better way to know."
         />
         <motion.div
           variants={stagger}
-          className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3"
+          className="mt-16 grid grid-cols-1 gap-5 md:grid-cols-3"
         >
           {[
             {
@@ -438,10 +515,15 @@ function ProblemSection() {
             <motion.div
               key={card.title}
               variants={fadeUp}
-              className="glass rounded-3xl p-8"
+              className={cn(CARD_SHELL, "p-8")}
+              style={CARD_SHADOW}
             >
-              <card.icon className="h-8 w-8 text-aurora-peach" />
-              <h3 className="mt-5 text-xl font-medium text-text">{card.title}</h3>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-border-soft bg-surface/60">
+                <card.icon className="h-4 w-4 text-aurora-peach" />
+              </span>
+              <h3 className="mt-5 font-serif text-2xl font-medium tracking-[-0.01em] text-text">
+                {card.title}
+              </h3>
               <p className="mt-3 text-base leading-relaxed text-text-muted">
                 {card.body}
               </p>
@@ -468,13 +550,17 @@ function SolutionSection() {
         className="mx-auto max-w-7xl"
       >
         <SectionHeader
-          kicker="THE SOLUTION"
+          kicker="The solution"
           headline="60 seconds. Real research. A verdict you can trust."
           subhead="Paste any product link, pick a country, and watch Wynner read the web, mine real customer voice, and score the product against the market. Then ship the winner."
         />
 
         {/* Big visual */}
-        <motion.div variants={fadeUp} className="mx-auto mt-20 max-w-5xl">
+        <motion.div
+          variants={fadeUp}
+          className={cn(CARD_SHELL, "mx-auto mt-20 max-w-5xl overflow-hidden p-2")}
+          style={CARD_SHADOW}
+        >
           <VideoSlot
             videoSrc="/marketing/solution-demo.mp4"
             fallback={<FallbackDemoVideo />}
@@ -485,7 +571,7 @@ function SolutionSection() {
         {/* 3 explainer pills */}
         <motion.div
           variants={stagger}
-          className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3"
+          className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3"
         >
           {[
             {
@@ -504,11 +590,17 @@ function SolutionSection() {
             <motion.div
               key={p.title}
               variants={fadeUp}
-              className="glass flex items-start gap-3 rounded-2xl p-4"
+              className={cn(CARD_INLINE, "flex items-start gap-3 p-5")}
             >
-              <span className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-aurora-purple" />
+              <span
+                className="mt-1 inline-flex h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  background: AURORA_BG,
+                  boxShadow: "0 0 8px rgba(167,136,255,0.7)",
+                }}
+              />
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-wider text-aurora-purple">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
                   {p.title}
                 </div>
                 <div className="mt-1 text-sm text-text-muted">{p.body}</div>
@@ -522,14 +614,14 @@ function SolutionSection() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* FEATURE PILLARS — 3 alternating sections                                 */
+/* FEATURE PILLARS — alternating editorial + feature bento grid             */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function FeaturePillars() {
   return (
     <div className="w-full">
       <Pillar
-        kicker="PILLAR 01 · INTELLIGENT SCORING"
+        kicker="Pillar 01 · Intelligent scoring"
         headline="Every product gets a verdict."
         subhead="Wynner combines real web research with country-specific market data to score every product on five dimensions — margin, market fit, demand, competition, and creative potential. No more guessing."
         bullets={[
@@ -544,7 +636,7 @@ function FeaturePillars() {
         reverse={false}
       />
       <Pillar
-        kicker="PILLAR 02 · READY-TO-USE HOOK ANGLES"
+        kicker="Pillar 02 · Ready-to-use hook angles"
         headline="Eight ad angles. Pre-written, ready to ship."
         subhead="Every Deep Research scan produces 8 hook angles across awareness levels and emotional drivers — with full script structures, captions, CTAs, and platform fit scores. Copy them. Adapt them. Ship them."
         bullets={[
@@ -559,7 +651,7 @@ function FeaturePillars() {
         reverse
       />
       <Pillar
-        kicker="PILLAR 03 · MAGAZINE-QUALITY REPORTS"
+        kicker="Pillar 03 · Magazine-quality reports"
         headline="A 14-page intelligence dossier, instantly."
         subhead="Deep Research scans produce a designed PDF report you can save, share, or send to your team. Real customer voice, full angle scripts, 14-day launch playbook, risk analysis — all cited."
         bullets={[
@@ -573,6 +665,9 @@ function FeaturePillars() {
         videoSrc="/marketing/feature-pdf.mp4"
         reverse={false}
       />
+
+      {/* Bento feature grid — 6 cells of capabilities */}
+      <FeatureBento />
     </div>
   );
 }
@@ -613,17 +708,27 @@ function Pillar({
           className={cn("order-2", reverse ? "lg:order-2" : "lg:order-1")}
         >
           <Kicker>{kicker}</Kicker>
-          <h2 className="mt-3 font-serif text-4xl leading-tight tracking-tight text-text md:text-5xl">
+          <h2 className="mt-4 font-serif text-3xl font-medium leading-[1.05] tracking-[-0.01em] text-text md:text-5xl">
             {headline}
           </h2>
-          <p className="mt-5 text-lg leading-relaxed text-text-muted">{subhead}</p>
+          <p className="mt-5 text-base leading-relaxed text-text-muted md:text-lg">
+            {subhead}
+          </p>
           <ul className="mt-8 max-w-md space-y-3">
             {bullets.map((b) => (
-              <li key={b} className="flex items-start gap-3 text-base text-text">
-                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-aurora-purple/15">
-                  <span className="text-aurora-purple">✦</span>
-                </span>
-                {b}
+              <li
+                key={b}
+                className="flex items-start gap-3 text-base text-text"
+              >
+                <span
+                  aria-hidden
+                  className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{
+                    background: AURORA_BG,
+                    boxShadow: "0 0 6px rgba(167,136,255,0.6)",
+                  }}
+                />
+                <span className="leading-relaxed text-text-muted">{b}</span>
               </li>
             ))}
           </ul>
@@ -642,14 +747,315 @@ function Pillar({
             reverse ? "lg:order-1" : "lg:order-2",
           )}
         >
-          <VideoSlot
-            videoSrc={videoSrc}
-            fallback={visual}
-            aspectRatio="4/5"
-          />
+          <div
+            className={cn(CARD_SHELL, "overflow-hidden p-2")}
+            style={CARD_SHADOW}
+          >
+            <VideoSlot
+              videoSrc={videoSrc}
+              fallback={visual}
+              aspectRatio="4/5"
+            />
+          </div>
         </motion.div>
       </motion.div>
     </section>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* FEATURE BENTO — 6 cells of product capabilities                           */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+function FeatureBento() {
+  const cells: {
+    title: string;
+    body: string;
+    kicker: string;
+    span?: "tall" | "wide";
+    accent?: string;
+  }[] = [
+    {
+      kicker: "60s scan",
+      title: "From link to verdict, in a minute.",
+      body: "Paste any product URL. Pick a country. Wynner returns a scored, cited dossier in 60 seconds flat.",
+      span: "wide",
+      accent: "#5B8DFF",
+    },
+    {
+      kicker: "Hook angles",
+      title: "8 angles. Pre-written.",
+      body: "Cover every awareness level, from unaware to most-aware. Copy. Ship.",
+      accent: "#A788FF",
+    },
+    {
+      kicker: "Customer voice",
+      title: "Real Reddit. Real Amazon.",
+      body: "Verbatim quotes from your real audience — not generated, found.",
+      accent: "#FF89C5",
+    },
+    {
+      kicker: "Country fit",
+      title: "Scored against 15 markets.",
+      body: "AOV, payment preferences, shipping tolerance, niche heat per country.",
+      span: "tall",
+      accent: "#FFB088",
+    },
+    {
+      kicker: "14-day playbook",
+      title: "A launch plan, day by day.",
+      body: "Daily creative briefs, budget pacing, and learnings to validate fast.",
+      accent: "#88E5C8",
+    },
+    {
+      kicker: "Magazine dossier",
+      title: "A 14-page PDF you can hand to your team.",
+      body: "Designed like a consulting deliverable. Cited sources throughout.",
+      span: "wide",
+      accent: "#A788FF",
+    },
+  ];
+
+  return (
+    <section className="w-full px-6 py-32">
+      <motion.div
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={stagger}
+        className="mx-auto max-w-7xl"
+      >
+        <SectionHeader
+          kicker="Everything in one scan"
+          headline="The whole stack of pre-launch intelligence."
+          subhead="One paste. Six artefacts. Zero spreadsheets."
+        />
+
+        <div className="mt-16 grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-4 md:grid-cols-3 md:grid-rows-3">
+          {cells.map((c, i) => (
+            <motion.div
+              key={c.title}
+              variants={fadeUp}
+              className={cn(
+                CARD_SHELL,
+                "group relative overflow-hidden p-7 transition-colors hover:border-aurora-purple/35",
+                c.span === "wide" && "md:col-span-2",
+                c.span === "tall" && "md:row-span-2",
+              )}
+              style={CARD_SHADOW}
+            >
+              {/* Per-cell aurora dot */}
+              <span
+                aria-hidden
+                className="absolute right-6 top-6 h-2 w-2 rounded-full transition-transform group-hover:scale-125"
+                style={{
+                  background: c.accent ?? AURORA_BG,
+                  boxShadow: `0 0 12px ${c.accent ?? "rgba(167,136,255,0.7)"}`,
+                }}
+              />
+              <Kicker>{c.kicker}</Kicker>
+              <h3 className="mt-3 font-serif text-2xl font-medium leading-[1.1] tracking-[-0.01em] text-text md:text-3xl">
+                {c.title}
+              </h3>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-text-muted md:text-base">
+                {c.body}
+              </p>
+              {/* Decorative number for tall cells */}
+              {c.span === "tall" && (
+                <span
+                  aria-hidden
+                  className="absolute bottom-6 right-6 font-serif text-7xl leading-none text-text-dim/20"
+                >
+                  0{i + 1}
+                </span>
+              )}
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Sample verdict mockup — show the product output */}
+        <motion.div variants={fadeUp} className="mt-24">
+          <SampleVerdictShowcase />
+        </motion.div>
+      </motion.div>
+    </section>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* SAMPLE VERDICT — the actual product artefact, on display                  */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+function SampleVerdictShowcase() {
+  const reduce = useReducedMotion();
+  return (
+    <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 lg:grid-cols-[1fr_1.1fr]">
+      {/* Left — copy */}
+      <div>
+        <Kicker>What you actually get</Kicker>
+        <h2 className="mt-4 font-serif text-3xl font-medium leading-[1.05] tracking-[-0.01em] text-text md:text-5xl">
+          A verdict you can{" "}
+          <span className={AURORA_TEXT}>ship from.</span>
+        </h2>
+        <p className="mt-5 text-base leading-relaxed text-text-muted md:text-lg">
+          Every scan returns a single answer — go, test, risky, or skip —
+          backed by cited research, pillar scores, and hook angles you can
+          paste straight into your ad manager.
+        </p>
+        <ul className="mt-8 space-y-3">
+          {[
+            "Verdict + 0–100 score, country-specific",
+            "Five-pillar breakdown with reasoning",
+            "Top hook angles with hook + script + caption",
+            "Source citations for every claim",
+          ].map((b) => (
+            <li
+              key={b}
+              className="flex items-start gap-3 text-base text-text-muted"
+            >
+              <span
+                aria-hidden
+                className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{
+                  background: AURORA_BG,
+                  boxShadow: "0 0 6px rgba(167,136,255,0.6)",
+                }}
+              />
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Right — sample verdict card */}
+      <div className="mx-auto w-full max-w-md">
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className={cn(CARD_SHELL, "relative overflow-hidden")}
+          style={{
+            boxShadow:
+              "0 30px 60px -20px rgba(91,141,255,0.25), 0 0 0 1px rgba(167,136,255,0.14), inset 0 1px 0 0 rgba(255,255,255,0.05)",
+          }}
+        >
+          {/* Card header */}
+          <div className="flex items-center justify-between border-b border-border-soft/60 px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Crown className="h-3.5 w-3.5 text-go" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-dim">
+                Top pick — Today
+              </span>
+            </div>
+            <span className="font-mono text-[10px] text-text-dim">
+              DE · 60s
+            </span>
+          </div>
+
+          {/* Product name + score */}
+          <div className="px-5 pt-5">
+            <div className="text-base font-medium text-text">
+              Posture Belt v2
+            </div>
+            <div className="mt-0.5 text-xs text-text-muted">
+              Health & wellness · €34.90
+            </div>
+
+            <div className="mt-5 flex items-end justify-between">
+              <div className="flex items-baseline gap-1">
+                <motion.span
+                  initial={reduce ? false : { opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="font-mono text-5xl font-medium leading-none tabular-nums text-go"
+                >
+                  87
+                </motion.span>
+                <span className="font-mono text-xs text-text-dim">/ 100</span>
+              </div>
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-go"
+                style={{
+                  background: "rgba(61,214,140,0.14)",
+                  boxShadow: "inset 0 0 0 1px rgba(61,214,140,0.40)",
+                }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-go shadow-[0_0_8px_rgba(61,214,140,0.8)]" />
+                Go live
+              </span>
+            </div>
+          </div>
+
+          {/* Pillar bars */}
+          <div className="space-y-2.5 px-5 pt-5">
+            {[
+              { label: "Demand", value: 92, color: "#3DD68C" },
+              { label: "Margin", value: 78, color: "#5B8DFF" },
+              { label: "Competition", value: 64, color: "#A788FF" },
+            ].map((p, i) => (
+              <div key={p.label} className="flex items-center gap-3">
+                <span className="w-20 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                  {p.label}
+                </span>
+                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                  <motion.span
+                    initial={reduce ? false : { width: 0 }}
+                    whileInView={{ width: `${p.value}%` }}
+                    viewport={{ once: true }}
+                    transition={{
+                      duration: 0.9,
+                      delay: 0.6 + i * 0.12,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${p.color}AA, ${p.color})`,
+                    }}
+                  />
+                </div>
+                <span className="w-8 text-right font-mono text-[10px] tabular-nums text-text-muted">
+                  {p.value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Top hook angles */}
+          <div className="border-t border-border-soft/60 px-5 py-4">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-aurora-purple" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-dim">
+                Top hook angles
+              </span>
+            </div>
+            <ul className="mt-2.5 space-y-1.5 text-xs leading-snug text-text">
+              <li className="truncate">
+                &ldquo;ngl my back is COOKED after these zoom days&rdquo;
+              </li>
+              <li className="truncate">
+                &ldquo;I tried 5 posture belts before this one&rdquo;
+              </li>
+              <li className="truncate">
+                &ldquo;30 days later — actual before/after&rdquo;
+              </li>
+            </ul>
+          </div>
+
+          {/* Footer chip */}
+          <div className="flex items-center justify-between border-t border-border-soft/60 px-5 py-3">
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-text-dim">
+              <FileText className="h-3 w-3" />
+              14-page dossier ready
+            </span>
+            <span className="font-mono text-[10px] text-text-dim">
+              12 sources
+            </span>
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -668,47 +1074,59 @@ function HowItWorks() {
         className="mx-auto max-w-6xl"
       >
         <SectionHeader
-          kicker="HOW IT WORKS"
+          kicker="How it works"
           headline="From product link to verdict in 60 seconds."
           subhead="Three steps. No fluff."
         />
-        <div className="mt-20 grid grid-cols-1 items-stretch gap-6 md:grid-cols-3">
+        <div className="mt-16 grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
           {[
             {
               n: "01",
               title: "Paste & pick",
               body: "Drop in any product link from AliExpress, Temu, or Amazon. Pick the country you want to sell in. Choose your scan depth.",
-              grad: "from-aurora-blue/20 to-aurora-blue/5",
             },
             {
               n: "02",
               title: "Wynner reads the web",
               body: "Real Google searches. Reddit, Amazon, forums, ad libraries. Wynner mines real customer voice and real competitor data.",
-              grad: "from-aurora-purple/20 to-aurora-purple/5",
             },
             {
               n: "03",
               title: "Get the verdict",
               body: "Score, verdict, hook angles, customer avatars, pricing strategy. Everything you need to decide and execute — in one place.",
-              grad: "from-aurora-pink/20 to-aurora-pink/5",
             },
           ].map((s) => (
             <motion.div
               key={s.n}
               variants={fadeUp}
-              className="glass relative flex flex-col rounded-3xl p-8"
+              className={cn(CARD_SHELL, "relative flex flex-col p-8")}
+              style={CARD_SHADOW}
             >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs uppercase tracking-[0.18em] text-text-dim">
+                  Step {s.n}
+                </span>
+                <span
+                  aria-hidden
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{
+                    background: AURORA_BG,
+                    boxShadow: "0 0 8px rgba(167,136,255,0.6)",
+                  }}
+                />
+              </div>
               <span
                 className={cn(
-                  "mb-4 h-32 rounded-2xl bg-gradient-to-br",
-                  s.grad,
+                  "mt-6 font-serif text-7xl font-medium leading-none tracking-[-0.02em]",
+                  AURORA_TEXT,
                 )}
-              />
-              <span className="bg-gradient-to-r from-aurora-blue via-aurora-purple to-aurora-pink bg-clip-text font-serif text-6xl leading-none text-transparent">
+              >
                 {s.n}
               </span>
-              <h3 className="mt-3 text-xl font-medium text-text">{s.title}</h3>
-              <p className="mt-2 text-base leading-relaxed text-text-muted">
+              <h3 className="mt-5 font-serif text-2xl font-medium tracking-[-0.01em] text-text">
+                {s.title}
+              </h3>
+              <p className="mt-3 text-base leading-relaxed text-text-muted">
                 {s.body}
               </p>
             </motion.div>
@@ -726,12 +1144,36 @@ function HowItWorks() {
 function ComparisonSection() {
   const rows = [
     ["Research time per product", "3–5 hours manually", "60 seconds"],
-    ["Sources consulted", "Whatever you remember to check", "Reddit, Amazon, forums, ad libraries — all cited"],
-    ["Country-specific insights", "Hope it works in your market", "Scored against 15 countries with real local data"],
-    ["Hook angles", "You write them yourself, late at night", "8 pre-written angles, ready to ship"],
-    ["Customer language", "Your guess, your bias", "Real verbatim quotes from your audience"],
-    ["Pricing strategy", "Whatever AliExpress × 3 gives you", "Tier strategy based on observed market prices"],
-    ["Risk flags", "You find out when ads die", "Identified before you spend a dollar"],
+    [
+      "Sources consulted",
+      "Whatever you remember to check",
+      "Reddit, Amazon, forums, ad libraries — all cited",
+    ],
+    [
+      "Country-specific insights",
+      "Hope it works in your market",
+      "Scored against 15 countries with real local data",
+    ],
+    [
+      "Hook angles",
+      "You write them yourself, late at night",
+      "8 pre-written angles, ready to ship",
+    ],
+    [
+      "Customer language",
+      "Your guess, your bias",
+      "Real verbatim quotes from your audience",
+    ],
+    [
+      "Pricing strategy",
+      "Whatever AliExpress × 3 gives you",
+      "Tier strategy based on observed market prices",
+    ],
+    [
+      "Risk flags",
+      "You find out when ads die",
+      "Identified before you spend a dollar",
+    ],
   ];
   return (
     <section className="w-full px-6 py-32">
@@ -743,11 +1185,15 @@ function ComparisonSection() {
         className="mx-auto max-w-5xl"
       >
         <SectionHeader
-          kicker="WYNNER VS THE OLD WAY"
+          kicker="Wynner vs the old way"
           headline="Stop researching like it's 2019."
         />
-        <motion.div variants={fadeUp} className="glass mt-12 overflow-hidden rounded-3xl">
-          <div className="grid grid-cols-[1fr_1fr_1.4fr] border-b border-border-soft bg-surface/40 px-6 py-4 text-xs font-mono uppercase tracking-wider text-text-muted">
+        <motion.div
+          variants={fadeUp}
+          className={cn(CARD_SHELL, "mt-12 overflow-hidden")}
+          style={CARD_SHADOW}
+        >
+          <div className="grid grid-cols-[1fr_1fr_1.4fr] border-b border-border-soft bg-surface/40 px-6 py-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
             <div></div>
             <div>The old way</div>
             <div className="text-aurora-purple">Wynner</div>
@@ -756,7 +1202,7 @@ function ComparisonSection() {
             <div
               key={dim}
               className={cn(
-                "grid grid-cols-[1fr_1fr_1.4fr] items-start gap-3 border-b border-border-soft px-6 py-4 text-sm transition-colors hover:bg-aurora-purple/5",
+                "grid grid-cols-[1fr_1fr_1.4fr] items-start gap-3 border-b border-border-soft px-6 py-4 text-sm transition-colors hover:bg-surface/50",
                 i === rows.length - 1 && "border-b-0",
               )}
             >
@@ -791,6 +1237,7 @@ const TESTIMONIALS = {
     role: "Dropshipper",
     flag: "🇩🇪",
     accent: "#5B8DFF",
+    metric: "2× win rate",
   },
   medium: [
     {
@@ -811,7 +1258,12 @@ const TESTIMONIALS = {
     },
   ],
   small: [
-    { quote: "The hook angles section is gold.", name: "Aisha K.", flag: "🇬🇧", accent: "#FFB088" },
+    {
+      quote: "The hook angles section is gold.",
+      name: "Aisha K.",
+      flag: "🇬🇧",
+      accent: "#FFB088",
+    },
     { quote: "Finally, real data not vibes.", name: "Tom H.", flag: "🇺🇸", accent: "#88E5C8" },
     { quote: "Worth every credit.", name: "Luca M.", flag: "🇮🇹", accent: "#A788FF" },
   ],
@@ -828,23 +1280,52 @@ function TestimonialsSection() {
         className="mx-auto max-w-7xl"
       >
         <SectionHeader
-          kicker="FROM OUR OPERATORS"
+          kicker="From our operators"
           headline="Don't take our word for it."
         />
-        {/* Featured */}
-        <motion.div variants={fadeUp} className="glass mt-16 rounded-3xl p-8 md:p-10">
-          <QuoteMark />
-          <p className="mt-3 font-serif text-2xl italic leading-snug text-text md:text-3xl">
-            &ldquo;{TESTIMONIALS.featured.quote}&rdquo;
-          </p>
-          <TestimonialMeta t={TESTIMONIALS.featured} starsSize="md" />
+        {/* Featured — quote + author + headline metric chip */}
+        <motion.div
+          variants={fadeUp}
+          className={cn(CARD_SHELL, "mt-12 p-10 md:p-14")}
+          style={CARD_SHADOW}
+        >
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_auto]">
+            <div>
+              <QuoteMark />
+              <p className="mt-4 font-serif text-2xl font-medium leading-[1.25] tracking-[-0.01em] text-text md:text-3xl">
+                &ldquo;{TESTIMONIALS.featured.quote}&rdquo;
+              </p>
+              <TestimonialMeta t={TESTIMONIALS.featured} starsSize="md" />
+            </div>
+            <div className="hidden flex-col items-center justify-center gap-1 lg:flex">
+              <span
+                className={cn(
+                  "font-serif text-6xl font-medium tracking-[-0.02em]",
+                  AURORA_TEXT,
+                )}
+              >
+                {TESTIMONIALS.featured.metric}
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                Customer reported
+              </span>
+            </div>
+          </div>
         </motion.div>
         {/* Medium pair */}
-        <motion.div variants={stagger} className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <motion.div
+          variants={stagger}
+          className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2"
+        >
           {TESTIMONIALS.medium.map((t) => (
-            <motion.div key={t.name} variants={fadeUp} className="glass rounded-3xl p-6">
+            <motion.div
+              key={t.name}
+              variants={fadeUp}
+              className={cn(CARD_SHELL, "p-7")}
+              style={CARD_SHADOW}
+            >
               <QuoteMark />
-              <p className="mt-3 font-serif text-xl italic leading-snug text-text">
+              <p className="mt-3 font-serif text-xl font-medium leading-snug tracking-[-0.005em] text-text">
                 &ldquo;{t.quote}&rdquo;
               </p>
               <TestimonialMeta t={t} starsSize="sm" />
@@ -852,10 +1333,17 @@ function TestimonialsSection() {
           ))}
         </motion.div>
         {/* Small trio */}
-        <motion.div variants={stagger} className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <motion.div
+          variants={stagger}
+          className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3"
+        >
           {TESTIMONIALS.small.map((t) => (
-            <motion.div key={t.name} variants={fadeUp} className="glass rounded-3xl p-6">
-              <p className="font-serif text-base italic leading-snug text-text">
+            <motion.div
+              key={t.name}
+              variants={fadeUp}
+              className={cn(CARD_INLINE, "p-6")}
+            >
+              <p className="font-serif text-base font-medium leading-snug text-text">
                 &ldquo;{t.quote}&rdquo;
               </p>
               <TestimonialMeta t={t} starsSize="sm" />
@@ -871,7 +1359,7 @@ function QuoteMark() {
   return (
     <span
       aria-hidden
-      className="font-serif text-5xl leading-none text-aurora-purple"
+      className="font-serif text-5xl leading-none text-aurora-purple/80"
       style={{ fontFamily: "var(--font-serif)" }}
     >
       &ldquo;
@@ -887,7 +1375,7 @@ function TestimonialMeta({
   starsSize: "sm" | "md";
 }) {
   return (
-    <div className="mt-5 flex items-center gap-3">
+    <div className="mt-6 flex items-center gap-3">
       <FallbackAvatar name={t.name} accent={t.accent} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-sm font-medium text-text">
@@ -898,7 +1386,10 @@ function TestimonialMeta({
       </div>
       <div className={cn("flex gap-0.5", starsSize === "md" ? "text-base" : "text-xs")}>
         {[0, 1, 2, 3, 4].map((i) => (
-          <Star key={i} className="h-3.5 w-3.5 fill-aurora-peach text-aurora-peach" />
+          <Star
+            key={i}
+            className="h-3.5 w-3.5 fill-aurora-peach text-aurora-peach"
+          />
         ))}
       </div>
     </div>
@@ -920,20 +1411,20 @@ function PricingTeaser() {
         className="mx-auto max-w-6xl"
       >
         <SectionHeader
-          kicker="PRICING"
+          kicker="Pricing"
           headline="Pay for what you actually use."
           subhead="Credits never expire. Plans give you more, daily. No tricks."
         />
         <motion.div
           variants={stagger}
-          className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3"
+          className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3"
         >
           {[
             {
               name: "Starter",
               price: "€0",
               suffix: "/mo",
-              credits: "✦ 10 credits/month",
+              credits: "10 credits/month",
               features: [
                 "Free forever, no card required",
                 "Five-pillar scoring",
@@ -947,7 +1438,7 @@ function PricingTeaser() {
               name: "Pro",
               price: "€19",
               suffix: "/mo",
-              credits: "✦ 100 credits/month",
+              credits: "100 credits/month",
               features: ["All features unlocked", "Reddit voice mining", "No watermarks"],
               cta: "Start with Pro",
               ctaHref: "/pricing?highlight=pro",
@@ -957,7 +1448,7 @@ function PricingTeaser() {
               name: "Operator",
               price: "€49",
               suffix: "/mo",
-              credits: "✦ 300 credits/month",
+              credits: "300 credits/month",
               features: ["3 team seats", "API access", "Priority queue"],
               cta: "Scale up",
               ctaHref: "/pricing?highlight=operator",
@@ -968,38 +1459,42 @@ function PricingTeaser() {
               key={p.name}
               variants={fadeUp}
               className={cn(
-                "glass relative flex flex-col rounded-3xl p-8",
+                CARD_SHELL,
+                "relative flex flex-col p-8",
                 p.highlight && "border-aurora-purple/45",
               )}
               style={
                 p.highlight
                   ? {
                       boxShadow:
-                        "0 0 0 1px rgba(167,136,255,0.45), 0 30px 60px -20px rgba(167,136,255,0.45), inset 0 1px 0 0 var(--surface-glass-highlight)",
+                        "0 0 0 1px rgba(167,136,255,0.40), 0 30px 60px -20px rgba(167,136,255,0.35)",
                     }
-                  : undefined
+                  : CARD_SHADOW
               }
             >
               {p.highlight && (
                 <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-                  }}
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white"
+                  style={{ background: AURORA_BG }}
                 >
                   Most popular
                 </div>
               )}
-              <div className="font-serif text-3xl text-text">{p.name}</div>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="font-serif text-5xl text-text">{p.price}</span>
-                <span className="font-mono text-sm text-text-muted">{p.suffix}</span>
+              <div className="font-serif text-2xl font-medium tracking-[-0.01em] text-text">
+                {p.name}
               </div>
-              <div className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-aurora-purple/12 px-3 py-1 text-xs text-aurora-purple">
+              <div className="mt-5 flex items-baseline gap-1">
+                <span className="font-serif text-5xl font-medium tracking-[-0.02em] text-text">
+                  {p.price}
+                </span>
+                <span className="font-mono text-sm text-text-muted">
+                  {p.suffix}
+                </span>
+              </div>
+              <div className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-aurora-purple/25 bg-aurora-purple/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-aurora-purple">
                 {p.credits}
               </div>
-              <ul className="mt-6 flex-1 space-y-2 text-sm text-text">
+              <ul className="mt-6 flex-1 space-y-2.5 text-sm text-text-muted">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-2">
                     <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-aurora-green" />
@@ -1018,10 +1513,8 @@ function PricingTeaser() {
                 style={
                   p.highlight
                     ? {
-                        background:
-                          "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-                        boxShadow:
-                          "0 10px 30px -10px rgba(167,136,255,0.6)",
+                        background: AURORA_BG,
+                        boxShadow: "0 10px 30px -10px rgba(167,136,255,0.55)",
                       }
                     : undefined
                 }
@@ -1035,7 +1528,7 @@ function PricingTeaser() {
         <motion.div variants={fadeUp} className="mt-10 text-center">
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface/70 px-4 py-2 text-xs text-text backdrop-blur-md hover:border-aurora-purple/45"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface/60 px-4 py-2 text-xs text-text backdrop-blur-md hover:border-aurora-purple/45"
           >
             See all plans + top-up packs
             <ArrowRight className="h-3 w-3" />
@@ -1109,23 +1602,33 @@ function FaqSection() {
           {FAQS.map((item, i) => {
             const isOpen = open.has(i);
             return (
-              <motion.div key={item.q} variants={fadeUp} className="glass rounded-2xl">
+              <motion.div
+                key={item.q}
+                variants={fadeUp}
+                className={cn(
+                  CARD_INLINE,
+                  "transition-colors",
+                  isOpen && "border-aurora-purple/30 bg-surface-elevated/80",
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => toggle(i)}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl px-6 py-4 text-left"
+                  className="flex w-full items-center justify-between gap-3 rounded-3xl px-6 py-5 text-left"
                 >
-                  <span className="text-base font-medium text-text">{item.q}</span>
+                  <span className="text-base font-medium text-text">
+                    {item.q}
+                  </span>
                   <ChevronDown
                     className={cn(
                       "h-4 w-4 shrink-0 text-text-muted transition-transform",
-                      isOpen && "rotate-180",
+                      isOpen && "rotate-180 text-aurora-purple",
                     )}
                   />
                 </button>
                 {isOpen && (
-                  <div className="border-t border-border-soft px-6 py-4 text-sm leading-relaxed text-text-muted">
+                  <div className="border-t border-border-soft px-6 py-5 text-sm leading-relaxed text-text-muted">
                     {item.a}
                   </div>
                 )}
@@ -1139,52 +1642,72 @@ function FaqSection() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
-/* FINAL CTA                                                                */
+/* FINAL CTA — repeated email capture, big and confident                    */
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function FinalCta() {
   return (
-    <section className="w-full px-6 py-32 lg:py-48">
+    <section className="w-full px-6 py-32 lg:py-44">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.5 }}
-        className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl p-px"
+        className={cn(CARD_SHELL, "relative mx-auto max-w-5xl overflow-hidden")}
         style={{
-          background:
-            "linear-gradient(135deg, rgba(91,141,255,0.55), rgba(167,136,255,0.5), rgba(255,137,197,0.55))",
+          boxShadow:
+            "0 40px 100px -30px rgba(167,136,255,0.30), 0 24px 60px -24px rgba(0,0,0,0.50)",
         }}
       >
+        {/* Single tasteful aurora wash inside the card */}
         <div
-          className="relative rounded-[calc(theme(borderRadius.3xl)-1px)] bg-surface/85 p-12 text-center backdrop-blur-2xl md:p-16"
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(167,136,255,0.18), transparent 60%), rgba(var(--surface-rgb, 255 255 255), 0.85)",
+              "radial-gradient(ellipse 70% 80% at 50% 0%, rgba(167,136,255,0.18), transparent 65%), radial-gradient(ellipse 50% 60% at 90% 100%, rgba(91,141,255,0.12), transparent 65%)",
           }}
-        >
-          <Sparkles className="mx-auto h-12 w-12 text-aurora-purple" />
-          <h2 className="mt-6 font-serif text-5xl leading-[0.95] tracking-tight text-text md:text-6xl">
-            Stop launching blind.
+        />
+        <div className="relative px-8 py-16 text-center md:px-16 md:py-24">
+          <span
+            aria-hidden
+            className="mx-auto inline-flex h-2 w-2 rounded-full"
+            style={{
+              background: AURORA_BG,
+              boxShadow: "0 0 16px rgba(167,136,255,0.7)",
+            }}
+          />
+          <h2 className="mt-8 font-serif text-4xl font-medium leading-[1.0] tracking-[-0.02em] text-text md:text-6xl">
+            Stop launching{" "}
+            <span className="relative inline-block">
+              blind
+              <span
+                aria-hidden
+                className="absolute left-0 right-0 top-[58%] h-[0.10em] rounded-full"
+                style={{ background: AURORA_BG }}
+              />
+            </span>
+            .{" "}
+            <span className={AURORA_TEXT}>Start knowing.</span>
           </h2>
-          <p className="mt-6 font-serif text-xl italic text-text-muted md:text-2xl">
-            Your next product deserves a verdict, not a guess.
+          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-text-muted md:text-lg">
+            Your next product deserves a verdict, not a guess. 10 free credits
+            to start. No card required.
           </p>
-          <div className="mt-12">
+          <div className="mt-10">
             <Link
               href="/auth?mode=signup"
               className="group inline-flex h-16 items-center gap-2 rounded-full px-12 text-lg font-medium text-white transition-all hover:brightness-110"
               style={{
-                background:
-                  "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-                boxShadow: "0 18px 50px -10px rgba(167,136,255,0.65)",
+                background: AURORA_BG,
+                boxShadow: "0 18px 50px -10px rgba(167,136,255,0.55)",
               }}
             >
               Start scanning free
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <p className="mt-4 text-sm text-text-dim">
-              ✦ 10 free credits · No card required · Cancel anytime
+            <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
+              10 free credits · No card required · Cancel anytime
             </p>
           </div>
         </div>
@@ -1208,35 +1731,31 @@ function Footer() {
               <span aria-hidden className="relative inline-flex h-2 w-2">
                 <span
                   className="absolute inline-flex h-full w-full animate-pulse-glow rounded-full"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-                  }}
+                  style={{ background: AURORA_BG }}
                 />
                 <span
                   className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
-                  }}
+                  style={{ background: AURORA_BG }}
                 />
               </span>
-              <span className="font-serif text-2xl text-text">Wynner</span>
+              <span className="font-serif text-2xl font-medium tracking-[-0.01em] text-text">
+                Wynner
+              </span>
             </div>
-            <p className="mt-3 text-sm font-serif italic text-text-muted">
+            <p className="mt-3 font-serif text-sm italic text-text-muted">
               Know before you launch.
             </p>
             <p className="mt-2 text-xs text-text-dim">
               Real-time AI product intelligence for dropshippers.
             </p>
-            <div className="mt-4 flex gap-1.5">
+            <div className="mt-5 flex gap-1.5">
               {["Twitter", "Instagram", "YouTube", "TikTok"].map((s) => (
                 <a
                   key={s}
                   // TODO: replace # with actual social URLs before public launch.
                   href="#"
                   aria-label={s}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-soft bg-surface/70 text-xs text-text-muted hover:border-aurora-purple/45 hover:text-text"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-soft bg-surface/60 text-xs text-text-muted hover:border-aurora-purple/45 hover:text-text"
                 >
                   {s[0]}
                 </a>
@@ -1298,7 +1817,7 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         {title}
       </div>
       <ul className="mt-4 space-y-2 text-sm">

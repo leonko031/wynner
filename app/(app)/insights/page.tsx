@@ -390,13 +390,18 @@ function InsightsPageInner() {
   const hasMinimalData = products.length >= 5;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10 pb-32">
-      <InsightsHero
-        level={operatorLevel}
-        tags={tags}
-        tagsLoading={tagsLoading}
-        hasEnoughData={products.length >= 5}
-      />
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 pb-32 md:px-8 md:py-12">
+      <div className="mb-8 md:mb-10">
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          Operator dashboard
+        </p>
+        <InsightsHero
+          level={operatorLevel}
+          tags={tags}
+          tagsLoading={tagsLoading}
+          hasEnoughData={products.length >= 5}
+        />
+      </div>
 
       <PeriodControl
         period={period}
@@ -408,13 +413,16 @@ function InsightsPageInner() {
       {!hasMinimalData ? (
         <EmptyState />
       ) : (
-        <>
-          <motion.div
+        <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
+          <motion.section
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.05 }}
-            className="mt-8"
+            className="space-y-4"
           >
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Pattern detection
+            </p>
             <StrengthsBlindspots
               scansHash={scansHashPeriod}
               scans={compactScansInPeriod}
@@ -423,17 +431,23 @@ function InsightsPageInner() {
               periodEnd={periodEnd}
               enabled={compactScansInPeriod.length >= 3}
             />
-          </motion.div>
+          </motion.section>
 
-          <div className="mt-8">
+          <section className="space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Rhythm
+            </p>
             <ScanningRhythm
               byDay={aggregates.byDay}
               byHour={aggregates.byHour}
               byScoreBucket={aggregates.byScoreBucket}
             />
-          </div>
+          </section>
 
-          <div className="mt-8">
+          <section className="space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Metrics
+            </p>
             <MetricGrid
               totalScans={aggregates.totalScans}
               prevTotalScans={prevAggregates.totalScans}
@@ -469,13 +483,19 @@ function InsightsPageInner() {
               scanCountsByDay={scanCountsByDay}
               scoresByDay={scoresByDay}
             />
-          </div>
+          </section>
 
-          <div className="mt-8">
+          <section className="space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Niche × Country
+            </p>
             <NicheCountryMatrix matrix={aggregates.matrix} />
-          </div>
+          </section>
 
-          <div className="mt-8">
+          <section className="space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Strategic brief
+            </p>
             <StrategicBriefCard
               scansHash={scansHashPeriod}
               scans={compactScansInPeriod}
@@ -495,7 +515,7 @@ function InsightsPageInner() {
               }}
             />
             <SavedBriefs enabled={isSupabaseConfigured()} />
-          </div>
+          </section>
 
           {/* Hidden listener so latestBrief stays in sync with whatever the
               brief card most recently rendered (so PDF includes it). We hook
@@ -506,17 +526,20 @@ function InsightsPageInner() {
             onLoaded={setLatestBrief}
           />
 
-          <div className="mt-8">
+          <section className="space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Deep dive
+            </p>
             <DeepDive products={aggregates.inPeriod} />
-          </div>
+          </section>
 
           <ComparisonHistoryRailWrapper />
 
           <InsightsAdminDiagnostics />
-        </>
+        </div>
       )}
 
-      <div className="mt-10 flex flex-wrap items-center justify-end gap-3">
+      <div className="mt-12 flex flex-wrap items-center justify-end gap-3">
         <InsightsExportActions
           firstName={firstName}
           periodLabel={PERIOD_LABEL[period]}
@@ -546,9 +569,12 @@ function InsightsPageInner() {
 
 function ComparisonHistoryRailWrapper() {
   return (
-    <div className="mt-8">
+    <section className="space-y-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+        Comparison history
+      </p>
       <ComparisonHistoryRail enabled={isSupabaseConfigured()} />
-    </div>
+    </section>
   );
 }
 
@@ -620,20 +646,27 @@ function EmptyState() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
-      className="glass mt-8 rounded-3xl p-10 text-center"
+      className="mt-10 rounded-3xl border border-border-soft bg-surface-elevated/90 p-10 text-center backdrop-blur-2xl md:p-12"
+      style={{
+        boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
+      }}
     >
-      <h2 className="font-serif text-2xl text-text">
+      <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+        Awaiting scans
+      </p>
+      <h2 className="font-serif text-2xl md:text-3xl font-medium tracking-[-0.01em] text-text">
         Your story is just beginning
       </h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-text-muted">
+      <p className="mx-auto mt-3 max-w-md text-sm md:text-base text-text-muted">
         Insights take shape after a few scans. Score 5+ products and your
         strengths, blindspots, and scanning rhythm appear here.
       </p>
       <a
         href="/scan"
-        className="mt-5 inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-medium text-white shadow-[0_8px_22px_-6px_rgba(91,141,255,0.55)] hover:brightness-110"
+        className="mt-6 inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-medium text-white transition-[filter] hover:brightness-110"
         style={{
           background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+          boxShadow: "0 8px 22px -6px rgba(91,141,255,0.55)",
         }}
       >
         Run your first scan

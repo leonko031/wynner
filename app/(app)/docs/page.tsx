@@ -122,131 +122,138 @@ const DEEPER: DocLink[] = [
 
 export default function DocsPage() {
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-10">
-      <header className="mb-10">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 text-xs text-text-muted">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <header className="mb-12 max-w-3xl">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
           <Brain className="h-3 w-3" />
           Docs
         </div>
-        <h1 className="mt-5 text-4xl font-medium tracking-tight md:text-5xl">
+        <h1 className="mt-5 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-5xl">
           How Wynner works
         </h1>
-        <p className="mt-3 max-w-xl text-sm text-text-muted">
-          A short tour through the moving parts.
+        <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-muted md:text-base">
+          A short tour through the moving parts — from your first scan to the
+          five pillars that score it.
         </p>
       </header>
 
-      <Section title="Getting started" subtitle="Three jumping-off points">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {GETTING_STARTED.map((l, i) => (
-            <motion.div
-              key={l.href}
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
-            >
+      <div className="mx-auto max-w-4xl">
+        <Section title="Getting started" subtitle="Three jumping-off points">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {GETTING_STARTED.map((l, i) => (
+              <motion.div
+                key={l.href}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              >
+                <Link
+                  href={l.href}
+                  className="group flex h-full flex-col rounded-2xl border border-border-soft bg-surface-elevated/90 p-6 backdrop-blur-2xl transition-colors hover:border-border-strong"
+                  style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+                >
+                  <l.icon className="h-5 w-5 text-text-muted group-hover:text-text" />
+                  <div className="mt-4 font-medium text-text">{l.title}</div>
+                  <p className="mt-1.5 flex-1 text-xs leading-relaxed text-text-muted">
+                    {l.blurb}
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim group-hover:text-text">
+                    Go <ArrowRight className="h-3 w-3" />
+                  </span>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="How the score works" subtitle="Five weighted pillars">
+          <div
+            className="overflow-hidden rounded-2xl border border-border-soft bg-surface-elevated/90 backdrop-blur-2xl"
+            style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+          >
+            {PILLARS.map((p, i) => (
+              <div
+                key={p.key}
+                className="grid grid-cols-[120px_60px_1fr] items-start gap-4 border-b border-border-soft p-5 last:border-b-0"
+              >
+                <div className="flex items-center gap-2">
+                  <Calculator
+                    className="h-4 w-4"
+                    style={{ color: p.color }}
+                  />
+                  <span className="font-medium text-text">{p.key}</span>
+                </div>
+                <span
+                  className="inline-flex h-6 items-center justify-center rounded-full px-2 font-mono text-[11px] tabular-nums"
+                  style={{
+                    backgroundColor: `${p.color}1A`,
+                    color: p.color,
+                    border: `1px solid ${p.color}33`,
+                  }}
+                >
+                  {p.weight}
+                </span>
+                <motion.p
+                  className="text-sm leading-relaxed text-text-muted"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{ delay: i * 0.04 }}
+                >
+                  {p.body}
+                </motion.p>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="FAQ" subtitle="Things people ask">
+          <div className="space-y-3">
+            {FAQ.map((f, i) => (
+              <motion.details
+                key={f.q}
+                initial={{ opacity: 0, y: 6 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.35, delay: i * 0.05 }}
+                className="group rounded-2xl border border-border-soft bg-surface/60 p-5 [&[open]>summary>span.chev]:rotate-180"
+              >
+                <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-medium text-text">
+                  {f.q}
+                  <span
+                    aria-hidden
+                    className="chev font-mono text-text-dim transition-transform"
+                  >
+                    ▾
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-text-muted">
+                  {f.a}
+                </p>
+              </motion.details>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Going deeper">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {DEEPER.map((l) => (
               <Link
+                key={l.href}
                 href={l.href}
-                className="group flex h-full flex-col rounded-2xl border border-border-soft bg-surface p-5 transition-colors hover:border-border-strong"
+                className="group flex h-full flex-col rounded-2xl border border-border-soft bg-surface/60 p-5 transition-colors hover:border-border-strong"
               >
                 <l.icon className="h-5 w-5 text-text-muted group-hover:text-text" />
                 <div className="mt-3 font-medium text-text">{l.title}</div>
-                <p className="mt-1 flex-1 text-xs leading-relaxed text-text-muted">
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">
                   {l.blurb}
                 </p>
-                <span className="mt-3 inline-flex items-center gap-1 font-mono text-[11px] text-text-dim group-hover:text-text">
-                  Go <ArrowRight className="h-3 w-3" />
-                </span>
               </Link>
-            </motion.div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="How the score works" subtitle="Five weighted pillars">
-        <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface/40">
-          {PILLARS.map((p, i) => (
-            <div
-              key={p.key}
-              className="grid grid-cols-[120px_60px_1fr] items-start gap-4 border-b border-border-soft p-5 last:border-b-0"
-            >
-              <div className="flex items-center gap-2">
-                <Calculator
-                  className="h-4 w-4"
-                  style={{ color: p.color }}
-                />
-                <span className="font-medium text-text">{p.key}</span>
-              </div>
-              <span
-                className="inline-flex h-6 items-center justify-center rounded-full px-2 font-mono text-[11px] tabular-nums"
-                style={{
-                  backgroundColor: `${p.color}1A`,
-                  color: p.color,
-                  border: `1px solid ${p.color}33`,
-                }}
-              >
-                {p.weight}
-              </span>
-              <motion.p
-                className="text-sm leading-relaxed text-text-muted"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ delay: i * 0.04 }}
-              >
-                {p.body}
-              </motion.p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="FAQ" subtitle="Things people ask">
-        <div className="space-y-3">
-          {FAQ.map((f, i) => (
-            <motion.details
-              key={f.q}
-              initial={{ opacity: 0, y: 6 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.35, delay: i * 0.05 }}
-              className="group rounded-2xl border border-border-soft bg-surface p-5 [&[open]>summary>span.chev]:rotate-180"
-            >
-              <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-medium text-text">
-                {f.q}
-                <span
-                  aria-hidden
-                  className="chev font-mono text-text-dim transition-transform"
-                >
-                  ▾
-                </span>
-              </summary>
-              <p className="mt-3 text-sm leading-relaxed text-text-muted">
-                {f.a}
-              </p>
-            </motion.details>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Going deeper">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {DEEPER.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="group flex h-full flex-col rounded-2xl border border-border-soft bg-surface p-5 transition-colors hover:border-border-strong"
-            >
-              <l.icon className="h-5 w-5 text-text-muted group-hover:text-text" />
-              <div className="mt-3 font-medium text-text">{l.title}</div>
-              <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                {l.blurb}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </Section>
+            ))}
+          </div>
+        </Section>
+      </div>
     </main>
   );
 }
@@ -261,11 +268,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-10">
-      <header className="mb-4">
-        <h2 className="text-xl font-medium tracking-tight">{title}</h2>
+    <section className="mb-12">
+      <header className="mb-5">
+        <h2 className="font-serif text-2xl font-medium tracking-[-0.01em] md:text-3xl">
+          {title}
+        </h2>
         {subtitle && (
-          <p className="mt-0.5 text-sm text-text-muted">{subtitle}</p>
+          <p className="mt-1 text-sm text-text-muted">{subtitle}</p>
         )}
       </header>
       {children}

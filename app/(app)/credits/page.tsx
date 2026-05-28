@@ -102,13 +102,16 @@ export default function CreditsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
       {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-medium tracking-tight md:text-4xl">
+      <header className="mb-10 max-w-3xl">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          Account
+        </div>
+        <h1 className="mt-3 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-5xl">
           Credits
         </h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <p className="mt-3 text-sm text-text-muted md:text-base">
           Your balance, your patterns, your generosity to come.
         </p>
       </header>
@@ -120,10 +123,9 @@ export default function CreditsPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="glass-strong relative overflow-hidden rounded-3xl p-7"
+          className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl"
           style={{
-            boxShadow:
-              "0 24px 60px -16px rgba(167,136,255,0.40), inset 0 1px 0 0 var(--surface-glass-highlight)",
+            boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
           }}
         >
           <div className="absolute inset-x-0 bottom-0 h-1">
@@ -135,7 +137,7 @@ export default function CreditsPage() {
               }}
             />
           </div>
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
             Balance
           </div>
           <div className="mt-2 flex items-baseline gap-3">
@@ -173,9 +175,10 @@ export default function CreditsPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05 }}
-          className="glass rounded-3xl p-7"
+          className="rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl"
+          style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
         >
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
             Usage this month
           </div>
           <div className="mt-3 flex items-center justify-center">
@@ -201,9 +204,10 @@ export default function CreditsPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="glass rounded-3xl p-7"
+          className="rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl"
+          style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
         >
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
             Streak
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -245,10 +249,10 @@ export default function CreditsPage() {
       </div>
 
       {/* ACTIONS BAR */}
-      <div className="glass mt-6 grid grid-cols-2 gap-2 rounded-2xl p-2 md:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-border-soft bg-surface/60 p-2 md:grid-cols-4">
         <Link
           href="/pricing#topups"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(91,141,255,0.7)] transition-all hover:brightness-110"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(91,141,255,0.55)] transition-all hover:brightness-110"
           style={{
             background:
               "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
@@ -297,10 +301,13 @@ export default function CreditsPage() {
       </div>
 
       {/* TRANSACTIONS */}
-      <section className="mt-10">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <section className="mt-12">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-medium tracking-tight md:text-2xl">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Ledger
+            </div>
+            <h2 className="mt-2 font-serif text-2xl font-medium tracking-[-0.01em] md:text-3xl">
               Transaction history
             </h2>
             <p className="mt-1 text-sm text-text-muted">
@@ -331,7 +338,10 @@ export default function CreditsPage() {
             ))}
           </div>
         </div>
-        <div className="glass rounded-3xl p-3">
+        <div
+          className="rounded-3xl border border-border-soft bg-surface-elevated/90 p-3 backdrop-blur-2xl"
+          style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+        >
           {pageSlice.length === 0 ? (
             <EmptyState filter={filter} />
           ) : (
@@ -356,11 +366,14 @@ export default function CreditsPage() {
       </section>
 
       {/* INSIGHTS */}
-      <section className="mt-10">
-        <h2 className="text-xl font-medium tracking-tight md:text-2xl">
+      <section className="mt-12">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          Insights
+        </div>
+        <h2 className="mt-2 font-serif text-2xl font-medium tracking-[-0.01em] md:text-3xl">
           Your patterns
         </h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
           <InsightCard
             icon={<Sparkles className="h-4 w-4" />}
             accent="#5B8DFF"
@@ -386,14 +399,20 @@ export default function CreditsPage() {
       </section>
 
       {/* AUTO-REFILL */}
-      <section className="mt-10">
-        <div className="glass rounded-3xl p-6">
+      <section className="mt-12">
+        <div
+          className="rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl"
+          style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-medium tracking-tight text-text">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                Always on
+              </div>
+              <h2 className="mt-2 font-serif text-2xl font-medium tracking-[-0.01em] text-text md:text-3xl">
                 Auto-refill
               </h2>
-              <p className="mt-1 max-w-md text-sm text-text-muted">
+              <p className="mt-2 max-w-md text-sm text-text-muted">
                 When your balance drops below 10 credits, we&apos;ll automatically buy
                 the pack you choose. We only charge you when needed. Cancel anytime.
               </p>
@@ -523,9 +542,9 @@ function InsightCard({
 }) {
   return (
     <div
-      className="glass rounded-2xl p-5"
+      className="rounded-2xl border border-border-soft bg-surface-elevated/90 p-6 backdrop-blur-2xl"
       style={{
-        boxShadow: `inset 0 1px 0 0 var(--surface-glass-highlight), 0 0 32px -10px ${accent}45`,
+        boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
       }}
     >
       <div
@@ -538,10 +557,10 @@ function InsightCard({
       >
         {icon}
       </div>
-      <div className="mt-3 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+      <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         {label}
       </div>
-      <div className="mt-1 text-lg font-medium tracking-tight text-text">
+      <div className="mt-1.5 text-lg font-medium tracking-tight text-text">
         {value}
       </div>
       <div className="mt-1 text-xs text-text-muted">{sub}</div>

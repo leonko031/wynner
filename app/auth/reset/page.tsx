@@ -46,10 +46,9 @@ export default function ResetPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong w-full max-w-md rounded-3xl p-8"
+        className="w-full max-w-md rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl md:p-9"
         style={{
-          boxShadow:
-            "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.30)",
+          boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
         }}
       >
         {!isSupabaseConfigured() && <SetupBanner />}
@@ -64,20 +63,26 @@ export default function ResetPage() {
               transition={{ duration: 0.3 }}
               className="text-center"
             >
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-aurora-purple/40"
-                   style={{ background: "linear-gradient(135deg, rgba(91,141,255,0.18), rgba(167,136,255,0.22))" }}>
+              <div
+                className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-aurora-purple/40"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(91,141,255,0.18), rgba(167,136,255,0.22))",
+                }}
+              >
                 <Mail className="h-6 w-6 text-aurora-purple" />
               </div>
-              <h1 className="text-2xl font-medium tracking-tight text-text">
-                ✨ Check your email
+              <h1 className="font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-text md:text-5xl">
+                Check your email
               </h1>
-              <p className="mt-2 text-sm text-text-muted">
-                We sent a reset link to <strong className="text-text">{email}</strong>. Click it
-                to set a new password.
+              <p className="mt-3 text-sm text-text-muted md:text-base">
+                We sent a reset link to{" "}
+                <strong className="text-text">{email}</strong>. Click it to set
+                a new password.
               </p>
               <Link
                 href="/auth"
-                className="mt-6 inline-flex items-center gap-1.5 text-xs text-text-muted underline-offset-2 hover:text-text hover:underline"
+                className="mt-7 inline-flex items-center gap-1.5 text-xs text-text-muted underline-offset-2 hover:text-text hover:underline"
               >
                 <ArrowLeft className="h-3 w-3" />
                 Back to sign in
@@ -91,13 +96,16 @@ export default function ResetPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               onSubmit={handleSubmit}
-              className="space-y-4"
+              className="space-y-5"
             >
               <div>
-                <h1 className="text-3xl font-medium tracking-tight text-text">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                  Password recovery
+                </div>
+                <h1 className="mt-3 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-text md:text-5xl">
                   Reset your password
                 </h1>
-                <p className="mt-2 text-sm text-text-muted">
+                <p className="mt-3 text-sm text-text-muted md:text-base">
                   Enter the email tied to your account and we&apos;ll send you a link.
                 </p>
               </div>
@@ -105,7 +113,7 @@ export default function ResetPage() {
               <div>
                 <label
                   htmlFor="reset-email"
-                  className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-text-dim"
+                  className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim"
                 >
                   Email
                 </label>
@@ -130,13 +138,13 @@ export default function ResetPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-white shadow-[0_12px_32px_-8px_rgba(91,141,255,0.55)] hover:brightness-110 disabled:opacity-80"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-white shadow-[0_10px_28px_-10px_rgba(167,136,255,0.50)] hover:brightness-110 disabled:opacity-80"
                 style={{ background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)" }}
               >
                 {submitting ? "Sending…" : "Send reset link"}
               </button>
 
-              <div className="border-t border-border-soft/60 pt-4 text-center">
+              <div className="border-t border-border-soft/60 pt-5 text-center">
                 <Link
                   href="/auth"
                   className="inline-flex items-center gap-1.5 text-xs text-text-muted underline-offset-2 hover:text-text hover:underline"

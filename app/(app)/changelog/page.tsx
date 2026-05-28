@@ -158,86 +158,91 @@ const ENTRIES: Entry[] = [
 
 export default function ChangelogPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
-      <header className="mb-10">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 text-xs text-text-muted">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <header className="mb-12 max-w-3xl">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
           <Lightbulb className="h-3 w-3" />
           What we built
         </div>
-        <h1 className="mt-5 text-4xl font-medium tracking-tight md:text-5xl">
+        <h1 className="mt-5 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-5xl">
           Changelog
         </h1>
-        <p className="mt-3 max-w-xl text-sm text-text-muted">
+        <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-muted md:text-base">
           Every prompt in the build-out — newest first. Each entry is a
           self-contained slice that shipped, was verified live, and laid the
           foundation for the next.
         </p>
       </header>
 
-      <ol className="relative space-y-10 pl-7">
-        {/* Spine */}
-        <span
-          aria-hidden
-          className="absolute left-2 top-2 h-full w-px bg-gradient-to-b from-border-strong via-border-soft to-transparent"
-        />
-        {ENTRIES.map((e, i) => (
-          <motion.li
-            key={e.version}
-            initial={{ opacity: 0, x: -8 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.45, delay: i * 0.04 }}
-            className="relative"
-          >
-            <span
-              aria-hidden
-              className="absolute -left-[18px] top-2 h-3 w-3 rounded-full border-2 border-ink"
-              style={{
-                backgroundColor: e.accent,
-                boxShadow: `0 0 12px ${e.accent}88`,
-              }}
-            />
-            <div className="rounded-2xl border border-border-soft bg-surface/60 p-5">
-              <div className="flex items-center gap-3">
-                <span
-                  className="flex h-7 w-7 items-center justify-center rounded-md"
-                  style={{
-                    backgroundColor: `${e.accent}1A`,
-                    color: e.accent,
-                    border: `1px solid ${e.accent}33`,
-                  }}
-                >
-                  <e.icon className="h-3.5 w-3.5" />
-                </span>
-                <h2 className="text-base font-medium text-text md:text-lg">
-                  {e.title}
-                </h2>
-                <span className="ml-auto font-mono text-[11px] text-text-dim">
-                  {e.version} · {e.date}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-text-muted">
-                {e.blurb}
-              </p>
-              <ul className="mt-3 space-y-1.5">
-                {e.bullets.map((b) => (
-                  <li
-                    key={b}
-                    className="flex items-start gap-2 text-xs text-text"
+      <div className="mx-auto max-w-3xl">
+        <ol className="relative space-y-10 pl-7">
+          {/* Spine */}
+          <span
+            aria-hidden
+            className="absolute left-2 top-2 h-full w-px bg-gradient-to-b from-border-strong via-border-soft to-transparent"
+          />
+          {ENTRIES.map((e, i) => (
+            <motion.li
+              key={e.version}
+              initial={{ opacity: 0, x: -8 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.45, delay: i * 0.04 }}
+              className="relative"
+            >
+              <span
+                aria-hidden
+                className="absolute -left-[18px] top-3 h-3 w-3 rounded-full border-2 border-ink"
+                style={{
+                  backgroundColor: e.accent,
+                  boxShadow: `0 0 12px ${e.accent}88`,
+                }}
+              />
+              <div
+                className="rounded-2xl border border-border-soft bg-surface-elevated/90 p-6 backdrop-blur-2xl"
+                style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-md"
+                    style={{
+                      backgroundColor: `${e.accent}1A`,
+                      color: e.accent,
+                      border: `1px solid ${e.accent}33`,
+                    }}
                   >
-                    <span
-                      aria-hidden
-                      className="mt-1.5 h-1 w-1 shrink-0 rounded-full"
-                      style={{ backgroundColor: e.accent }}
-                    />
-                    <span className="leading-relaxed">{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </motion.li>
-        ))}
-      </ol>
+                    <e.icon className="h-3.5 w-3.5" />
+                  </span>
+                  <h2 className="font-serif text-lg font-medium tracking-[-0.01em] text-text md:text-xl">
+                    {e.title}
+                  </h2>
+                  <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                    {e.version} · {e.date}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-text-muted">
+                  {e.blurb}
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {e.bullets.map((b) => (
+                    <li
+                      key={b}
+                      className="flex items-start gap-2.5 text-xs text-text"
+                    >
+                      <span
+                        aria-hidden
+                        className="mt-1.5 h-1 w-1 shrink-0 rounded-full"
+                        style={{ backgroundColor: e.accent }}
+                      />
+                      <span className="leading-relaxed">{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.li>
+          ))}
+        </ol>
+      </div>
     </main>
   );
 }

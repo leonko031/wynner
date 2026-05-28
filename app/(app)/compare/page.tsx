@@ -150,17 +150,20 @@ export default function ComparePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
-      <header className="mb-8 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-medium tracking-tight md:text-4xl">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <header className="mb-10 flex flex-col gap-6 md:mb-12 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+            Side-by-side
+          </p>
+          <h1 className="font-serif text-4xl md:text-5xl font-medium leading-[1.05] tracking-[-0.02em] text-text">
             Compare
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="text-sm md:text-base text-text-muted">
             Stack up to 3 products. Pick a winner when you&apos;re ready.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -172,9 +175,18 @@ export default function ComparePage() {
           </Button>
           <Button
             size="sm"
-            className="rounded-full"
+            className="rounded-full text-white"
             onClick={pickWinner}
             disabled={filled.length < 2}
+            style={
+              filled.length < 2
+                ? undefined
+                : {
+                    background:
+                      "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+                    boxShadow: "0 8px 22px -6px rgba(91,141,255,0.55)",
+                  }
+            }
           >
             <Trophy className="mr-1.5 h-3.5 w-3.5" />
             {winnerLocked ? "Re-pick" : "Pick the winner"}
@@ -182,70 +194,93 @@ export default function ComparePage() {
         </div>
       </header>
 
-      {/* Slot row */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {slotProducts.map((p, i) => {
-          if (!p)
-            return (
-              <EmptySlot
-                key={`empty-${i}`}
-                index={i}
-                onAdd={() => setOpenIdx(i)}
-                onDrop={(pid) => setSlot(i, pid)}
-              />
-            );
-          return (
-            <FilledSlot
-              key={p.id}
-              product={p}
-              highlighted={
-                winnerLocked ? winnerIndex === i : undefined
-              }
-              onRemove={() => setSlot(i, null)}
-            />
-          );
-        })}
-      </div>
+      <section className="space-y-10 md:space-y-12">
+        {/* Slot row */}
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Contenders
+            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim tabular-nums">
+              {filled.length} / {SLOT_COUNT}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {slotProducts.map((p, i) => {
+              if (!p)
+                return (
+                  <EmptySlot
+                    key={`empty-${i}`}
+                    index={i}
+                    onAdd={() => setOpenIdx(i)}
+                    onDrop={(pid) => setSlot(i, pid)}
+                  />
+                );
+              return (
+                <FilledSlot
+                  key={p.id}
+                  product={p}
+                  highlighted={
+                    winnerLocked ? winnerIndex === i : undefined
+                  }
+                  onRemove={() => setSlot(i, null)}
+                />
+              );
+            })}
+          </div>
 
-      {/* Helper banners */}
-      {filled.length === 1 && (
-        <p className="mt-4 text-center text-xs text-text-muted">
-          Add another product to start comparing.
-        </p>
-      )}
-      {winnerLocked && winnerIndex !== null && slotProducts[winnerIndex] && (
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-5 flex items-center justify-center gap-2 text-sm"
-        >
-          <Crown className="h-4 w-4 text-go" />
-          <span className="text-text">
-            Winner:{" "}
-            <strong className="text-go">
-              {slotProducts[winnerIndex]!.name}
-            </strong>
-          </span>
-          <button
-            type="button"
-            onClick={() => setWinnerLocked(false)}
-            aria-label="Clear winner"
-            className="ml-2 text-text-dim hover:text-text"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </motion.div>
-      )}
-
-      {/* Comparison table */}
-      {filled.length >= 1 && (
-        <div className="mt-8">
-          <ComparisonTable
-            products={slotProducts}
-            winnerIndex={winnerIndex}
-          />
+          {/* Helper banners */}
+          {filled.length === 1 && (
+            <p className="mt-4 text-center text-xs text-text-muted">
+              Add another product to start comparing.
+            </p>
+          )}
+          {winnerLocked && winnerIndex !== null && slotProducts[winnerIndex] && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-5 flex items-center justify-center"
+            >
+              <div
+                className="flex items-center gap-2 rounded-full border border-border-soft px-4 py-2 text-sm backdrop-blur-2xl"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(91,141,255,0.10), rgba(167,136,255,0.14), rgba(255,137,197,0.10))",
+                }}
+              >
+                <Crown className="h-4 w-4 text-go" />
+                <span className="text-text">
+                  Winner:{" "}
+                  <strong className="text-go">
+                    {slotProducts[winnerIndex]!.name}
+                  </strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWinnerLocked(false)}
+                  aria-label="Clear winner"
+                  className="ml-1 text-text-dim transition-colors hover:text-text"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
-      )}
+
+        {/* Comparison table */}
+        {filled.length >= 1 && (
+          <div>
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Breakdown
+            </p>
+            <ComparisonTable
+              products={slotProducts}
+              winnerIndex={winnerIndex}
+            />
+          </div>
+        )}
+      </section>
 
       <ProductPicker
         open={openIdx !== null}
@@ -260,16 +295,25 @@ export default function ComparePage() {
       />
 
       <Dialog open={confirmPick} onOpenChange={setConfirmPick}>
-        <DialogContent className="glass-strong rounded-3xl border-0 sm:max-w-md">
+        <DialogContent
+          className="rounded-3xl border border-border-soft bg-surface-elevated/90 backdrop-blur-2xl sm:max-w-md"
+          style={{
+            boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Pick the winner?</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-serif text-2xl font-medium tracking-[-0.01em]">
+              Pick the winner?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-text-muted">
               Wynner will lock in the highest-scoring product as your winner
               and surface a comparison summary you can share.
             </DialogDescription>
           </DialogHeader>
-          <div className="my-2 flex items-center justify-between gap-3 rounded-2xl border border-border-soft bg-surface/60 p-3">
-            <span className="text-sm text-text">Comparison fee</span>
+          <div className="my-2 flex items-center justify-between gap-3 rounded-2xl border border-border-soft bg-surface/60 p-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Comparison fee
+            </span>
             <CostPreview cost={CREDIT_COSTS.country_compare} showInsufficient />
           </div>
           <DialogFooter>
@@ -280,7 +324,15 @@ export default function ComparePage() {
             >
               Cancel
             </Button>
-            <Button onClick={confirmPickWinner} className="rounded-full">
+            <Button
+              onClick={confirmPickWinner}
+              className="rounded-full text-white"
+              style={{
+                background:
+                  "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+                boxShadow: "0 8px 22px -6px rgba(91,141,255,0.55)",
+              }}
+            >
               <Trophy className="mr-1.5 h-3.5 w-3.5" />
               Confirm — ✦ {CREDIT_COSTS.country_compare}
             </Button>

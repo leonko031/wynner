@@ -308,33 +308,44 @@ export default function SettingsPage() {
     profile.displayName.trim().slice(0, 2).toUpperCase() || "LN";
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-medium tracking-tight md:text-4xl">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <header className="mb-10 max-w-3xl">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          Workspace
+        </div>
+        <h1 className="mt-3 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-5xl">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Configure scanners, models, and your local data.
+        <p className="mt-3 text-sm text-text-muted md:text-base">
+          Configure scanners, models, and your local data. Everything lives in this browser
+          unless you tell it otherwise.
         </p>
       </header>
 
       {/* Profile */}
       <Section title="Profile" subtitle="How you show up in your own app">
-        <div className="flex items-center gap-4 rounded-xl border border-border-soft bg-surface p-4">
-          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-border-soft bg-gradient-to-br from-surface-elevated to-surface">
-            <span className="font-mono text-base text-text-muted">
-              {initials}
-            </span>
+        <div
+          className="flex items-center gap-4 rounded-2xl border border-border-soft bg-surface-elevated/90 p-5 backdrop-blur-2xl"
+          style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+        >
+          <div
+            className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-border-soft"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(91,141,255,0.18), rgba(167,136,255,0.22), rgba(255,137,197,0.18))",
+            }}
+          >
+            <span className="font-mono text-base text-text">{initials}</span>
           </div>
           <div className="flex-1">
-            <label className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
+            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
               Display name
             </label>
             <Input
               value={profile.displayName}
               onChange={(e) => setProfile({ displayName: e.target.value })}
               placeholder="Leon"
-              className="mt-1"
+              className="mt-1.5"
             />
           </div>
         </div>
@@ -478,14 +489,14 @@ export default function SettingsPage() {
             return (
               <div
                 key={c.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-border-soft bg-surface p-4"
+                className="flex items-start justify-between gap-3 rounded-2xl border border-border-soft bg-surface/60 p-5"
               >
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-text">{c.title}</div>
-                  <p className="mt-0.5 text-xs text-text-muted">
+                  <p className="mt-1 text-xs leading-relaxed text-text-muted">
                     {c.description}
                   </p>
-                  <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
                     {c.credits}
                   </p>
                 </div>
@@ -652,13 +663,16 @@ export default function SettingsPage() {
         </div>
 
         {/* Backups */}
-        <div className="mt-4 rounded-xl border border-border-soft bg-surface p-4">
+        <div
+          className="mt-5 rounded-2xl border border-border-soft bg-surface-elevated/90 p-5 backdrop-blur-2xl"
+          style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+        >
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium text-text">
                 Local backups
               </div>
-              <p className="mt-0.5 text-xs text-text-muted">
+              <p className="mt-1 text-xs text-text-muted">
                 A snapshot is taken automatically every 24 hours. Last 7 are
                 kept.
               </p>
@@ -673,13 +687,13 @@ export default function SettingsPage() {
             </Button>
           </div>
           {backups.length === 0 ? (
-            <p className="mt-3 text-xs text-text-dim">No snapshots yet.</p>
+            <p className="mt-4 text-xs text-text-dim">No snapshots yet.</p>
           ) : (
-            <ul className="mt-3 space-y-1.5">
+            <ul className="mt-4 space-y-1.5">
               {backups.map((b) => (
                 <li
                   key={b.key}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border-soft bg-surface-elevated px-3 py-2 text-xs"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border-soft bg-surface/60 px-3 py-2 text-xs"
                 >
                   <div className="min-w-0">
                     <div className="font-mono text-text">
@@ -755,9 +769,11 @@ function Section({
   return (
     <section className="space-y-4">
       <header>
-        <h2 className="text-xl font-medium tracking-tight">{title}</h2>
+        <h2 className="font-serif text-2xl font-medium tracking-[-0.01em] md:text-3xl">
+          {title}
+        </h2>
         {subtitle && (
-          <p className="mt-0.5 text-sm text-text-muted">{subtitle}</p>
+          <p className="mt-1 text-sm text-text-muted">{subtitle}</p>
         )}
       </header>
       {children}
@@ -775,11 +791,11 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-border-soft bg-surface p-4">
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border-soft bg-surface/60 p-5">
       <div>
         <div className="text-sm font-medium text-text">{title}</div>
         {description && (
-          <p className="mt-0.5 text-xs text-text-muted">{description}</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">{description}</p>
         )}
       </div>
       <div className="shrink-0">{children}</div>

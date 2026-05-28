@@ -94,8 +94,8 @@ export default function PricingPage() {
   return (
     <main className="relative min-h-screen">
       {/* Slim top bar that works for signed-out + signed-in users */}
-      <nav className="sticky top-0 z-30 w-full">
-        <div className="glass-flat mx-auto flex h-14 max-w-6xl items-center justify-between border-b border-border-soft px-6">
+      <nav className="sticky top-0 z-30 w-full border-b border-border-soft bg-surface/60 backdrop-blur-2xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="relative flex h-2 w-2 items-center justify-center">
               <span
@@ -141,7 +141,7 @@ export default function PricingPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 text-xs text-text-muted"
+            className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim"
           >
             <SparkIcon size={11} />
             Credits, not surprises
@@ -150,7 +150,7 @@ export default function PricingPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 }}
-            className="mt-6 text-balance text-5xl font-medium leading-[1.05] tracking-tight md:text-6xl"
+            className="mt-6 text-balance font-serif text-5xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl"
           >
             Pay for what you{" "}
             <span
@@ -228,10 +228,13 @@ export default function PricingPage() {
       >
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-medium tracking-tight md:text-4xl">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Top-ups
+            </div>
+            <h2 className="mt-3 font-serif text-3xl font-medium tracking-[-0.01em] md:text-4xl">
               Need more credits? Top up anytime.
             </h2>
-            <p className="mt-2 text-base text-text-muted">
+            <p className="mt-3 text-base text-text-muted">
               Never expire. Stack with your plan. Buy when you need them.
             </p>
           </div>
@@ -247,14 +250,20 @@ export default function PricingPage() {
       <section className="border-t border-border-soft px-6 py-20">
         <div className="mx-auto max-w-4xl">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-medium tracking-tight md:text-4xl">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Transparency
+            </div>
+            <h2 className="mt-3 font-serif text-3xl font-medium tracking-[-0.01em] md:text-4xl">
               What costs what.
             </h2>
-            <p className="mt-2 text-base text-text-muted">
+            <p className="mt-3 text-base text-text-muted">
               Total transparency. No surprises.
             </p>
           </div>
-          <div className="glass mt-8 overflow-hidden rounded-3xl">
+          <div
+            className="mt-8 overflow-hidden rounded-3xl border border-border-soft bg-surface-elevated/90 backdrop-blur-2xl"
+            style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+          >
             {COST_ROWS.map((row, i) => (
               <div
                 key={row.label}
@@ -308,7 +317,10 @@ export default function PricingPage() {
       <section className="border-t border-border-soft px-6 py-20">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-medium tracking-tight md:text-4xl">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              Perks
+            </div>
+            <h2 className="mt-3 font-serif text-3xl font-medium tracking-[-0.01em] md:text-4xl">
               The little things that add up.
             </h2>
           </div>
@@ -318,9 +330,9 @@ export default function PricingPage() {
                 key={title}
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="glass rounded-2xl p-5"
+                className="rounded-2xl border border-border-soft bg-surface-elevated/90 p-6 backdrop-blur-2xl"
                 style={{
-                  boxShadow: `inset 0 1px 0 0 var(--surface-glass-highlight), 0 0 36px -8px ${accent}40`,
+                  boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
                 }}
               >
                 <span
@@ -345,10 +357,13 @@ export default function PricingPage() {
       <section className="border-t border-border-soft px-6 py-20">
         <div className="mx-auto max-w-3xl">
           <div className="text-center">
-            <h2 className="text-3xl font-medium tracking-tight md:text-4xl">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              FAQ
+            </div>
+            <h2 className="mt-3 font-serif text-3xl font-medium tracking-[-0.01em] md:text-4xl">
               Questions?
             </h2>
-            <p className="mt-2 text-base text-text-muted">
+            <p className="mt-3 text-base text-text-muted">
               The honest answers, in plain language.
             </p>
           </div>
@@ -365,22 +380,26 @@ export default function PricingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.5 }}
-          className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl p-10 md:p-14"
+          className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border-soft bg-surface-elevated/90 p-10 backdrop-blur-2xl md:p-14"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(91,141,255,0.18), rgba(167,136,255,0.20), rgba(255,137,197,0.18))",
-            border: "1px solid rgba(167,136,255,0.45)",
-            boxShadow:
-              "0 30px 80px -20px rgba(167,136,255,0.45), inset 0 1px 0 0 rgba(255,255,255,0.30)",
-            backdropFilter: "blur(24px) saturate(180%)",
+            boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
           }}
         >
-          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-40"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgba(167,136,255,0.55), transparent 70%)",
+              filter: "blur(40px)",
+            }}
+          />
+          <div className="relative flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
             <div>
-              <h2 className="text-3xl font-medium tracking-tight text-text md:text-4xl">
+              <h2 className="font-serif text-3xl font-medium tracking-[-0.01em] text-text md:text-4xl">
                 Ready to know before you launch?
               </h2>
-              <p className="mt-2 max-w-xl text-base text-text-muted">
+              <p className="mt-3 max-w-xl text-base text-text-muted">
                 Start free. Upgrade when the credits make sense.
               </p>
             </div>

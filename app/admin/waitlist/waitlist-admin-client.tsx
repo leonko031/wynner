@@ -102,7 +102,7 @@ export function WaitlistAdminClient() {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl px-6 py-12">
       <Header />
       <StatsRow stats={data?.stats ?? null} />
       <ActionsBar onRefresh={() => void fetchData()} loading={loading} />
@@ -155,11 +155,19 @@ export function WaitlistAdminClient() {
 
 function Header() {
   return (
-    <header className="mb-8">
-      <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-text-muted">
+    <header className="mb-10">
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+        <span
+          aria-hidden
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{
+            background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+            boxShadow: "0 0 8px rgba(167,136,255,0.6)",
+          }}
+        />
         Admin · Waitlist
       </div>
-      <h1 className="mt-2 font-serif text-3xl text-text md:text-4xl">
+      <h1 className="mt-3 font-serif text-3xl font-medium tracking-[-0.01em] text-text md:text-4xl">
         Waitlist signups
       </h1>
       <p className="mt-2 text-sm text-text-muted">
@@ -174,15 +182,15 @@ function Header() {
 function StatsRow({ stats }: { stats: Stats | null }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <StatCard label="TOTAL SIGNUPS" value={stats?.total ?? 0} />
-      <StatCard label="JOINED TODAY" value={stats?.today ?? 0} />
+      <StatCard label="Total signups" value={stats?.total ?? 0} />
+      <StatCard label="Joined today" value={stats?.today ?? 0} />
       <StatCard
-        label="THIS WEEK"
+        label="This week"
         value={stats?.week ?? 0}
         sparkline={stats?.weekSparkline}
       />
       <StatCard
-        label="TOP SOURCE"
+        label="Top source"
         value={stats?.sourceBreakdown[0]?.source ?? "—"}
         numeric={false}
         subValue={
@@ -209,11 +217,14 @@ function StatCard({
   subValue?: string;
 }) {
   return (
-    <div className="glass rounded-2xl p-5">
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+    <div
+      className="rounded-2xl border border-border-soft bg-surface-elevated/90 p-5 backdrop-blur-2xl"
+      style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+    >
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         {label}
       </div>
-      <div className="mt-3 font-mono text-3xl tabular-nums text-text">
+      <div className="mt-3 font-serif text-3xl font-medium tabular-nums tracking-[-0.01em] text-text md:text-4xl">
         {numeric && typeof value === "number" ? (
           <CountUp end={value} duration={1.2} preserveValue separator="," />
         ) : (
@@ -221,7 +232,7 @@ function StatCard({
         )}
       </div>
       {sparkline && (
-        <div className="mt-3 flex h-7 items-end gap-0.5">
+        <div className="mt-3 flex h-8 items-end gap-0.5">
           {sparkline.map((v, i) => {
             const max = Math.max(...sparkline, 1);
             return (
@@ -245,18 +256,17 @@ function StatCard({
 /* -------------------------------------------------------------------------- */
 
 function ActionsBar({ onRefresh, loading }: { onRefresh: () => void; loading: boolean }) {
+  const buttonClass =
+    "inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/60 px-3 text-xs text-text-muted transition-colors hover:border-aurora-purple/45 hover:bg-surface-elevated/80 hover:text-text";
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-2">
-      <a
-        href="/api/admin/waitlist/export"
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45"
-      >
+    <div className="mt-8 flex flex-wrap items-center gap-2">
+      <a href="/api/admin/waitlist/export" className={buttonClass}>
         <Download className="h-3.5 w-3.5" />
         Export all to CSV
       </a>
       <a
         href="/api/admin/waitlist/export?confirmed=true"
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45"
+        className={buttonClass}
       >
         <Download className="h-3.5 w-3.5" />
         Export confirmed only
@@ -268,7 +278,7 @@ function ActionsBar({ onRefresh, loading }: { onRefresh: () => void; loading: bo
             description: "We'll ship this with the wave-1 invite flow.",
           })
         }
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45"
+        className={buttonClass}
       >
         <Megaphone className="h-3.5 w-3.5" />
         Send announcement email
@@ -277,7 +287,7 @@ function ActionsBar({ onRefresh, loading }: { onRefresh: () => void; loading: bo
         type="button"
         onClick={onRefresh}
         disabled={loading}
-        className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45 disabled:opacity-60"
+        className={cn(buttonClass, "ml-auto disabled:opacity-60")}
       >
         <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
         Refresh
@@ -309,22 +319,24 @@ function FiltersBar({
   setSourceFilter: (v: string) => void;
   sources: { source: string; count: number }[];
 }) {
+  const fieldClass =
+    "h-10 rounded-2xl border border-border-soft bg-surface/60 px-3 text-sm text-text outline-none backdrop-blur-xl transition-colors focus:border-aurora-purple/45 focus:shadow-[0_0_0_3px_rgba(167,136,255,0.15)]";
   return (
     <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto_auto]">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-dim" />
         <input
           type="search"
           placeholder="Search by email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="glass h-10 w-full rounded-2xl border-0 pl-9 pr-3 text-sm text-text outline-none placeholder:text-text-dim focus:shadow-[0_0_0_2px_rgba(167,136,255,0.2)]"
+          className={cn(fieldClass, "w-full pl-9 pr-3 placeholder:text-text-dim")}
         />
       </div>
       <select
         value={sourceFilter}
         onChange={(e) => setSourceFilter(e.target.value)}
-        className="glass h-10 rounded-2xl border-0 px-3 text-sm text-text outline-none"
+        className={fieldClass}
       >
         <option value="">All sources</option>
         {sources.map((s) => (
@@ -336,7 +348,7 @@ function FiltersBar({
       <select
         value={sortBy}
         onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-        className="glass h-10 rounded-2xl border-0 px-3 text-sm text-text outline-none"
+        className={fieldClass}
       >
         <option value="newest">Newest</option>
         <option value="oldest">Oldest</option>
@@ -347,7 +359,7 @@ function FiltersBar({
         onChange={(e) =>
           setConfirmedFilter(e.target.value as typeof confirmedFilter)
         }
-        className="glass h-10 rounded-2xl border-0 px-3 text-sm text-text outline-none"
+        className={fieldClass}
       >
         <option value="all">All emails</option>
         <option value="true">Confirmed only</option>
@@ -371,8 +383,11 @@ function RowsTable({
   onMutated: () => void;
 }) {
   return (
-    <div className="glass mt-6 overflow-hidden rounded-2xl">
-      <div className="grid grid-cols-[60px_1fr_140px_120px_80px_60px_44px] gap-3 border-b border-border-soft px-5 py-3 text-[10px] font-mono uppercase tracking-wider text-text-muted">
+    <div
+      className="mt-6 overflow-hidden rounded-2xl border border-border-soft bg-surface-elevated/90 backdrop-blur-2xl"
+      style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+    >
+      <div className="grid grid-cols-[60px_1fr_140px_120px_80px_60px_44px] gap-3 border-b border-border-soft bg-surface/40 px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         <div>#</div>
         <div>Email</div>
         <div>Joined</div>
@@ -382,10 +397,12 @@ function RowsTable({
         <div></div>
       </div>
       {loading && rows.length === 0 && (
-        <div className="py-12 text-center text-sm text-text-muted">Loading…</div>
+        <div className="py-16 text-center text-sm text-text-muted">
+          Loading…
+        </div>
       )}
       {!loading && rows.length === 0 && (
-        <div className="py-12 text-center text-sm text-text-muted">
+        <div className="py-16 text-center text-sm text-text-muted">
           No signups match these filters.
         </div>
       )}
@@ -393,18 +410,25 @@ function RowsTable({
         {rows.map((r) => (
           <li
             key={r.id}
-            className="grid cursor-pointer grid-cols-[60px_1fr_140px_120px_80px_60px_44px] items-center gap-3 border-b border-border-soft px-5 py-3 text-sm transition-colors last:border-b-0 hover:bg-surface/50"
+            className="grid cursor-pointer grid-cols-[60px_1fr_140px_120px_80px_60px_44px] items-center gap-3 border-b border-border-soft px-5 py-3.5 text-sm transition-colors last:border-b-0 hover:bg-surface/50"
             onClick={() => onRowClick(r)}
           >
-            <div className="font-mono tabular-nums text-text-muted">{r.position}</div>
+            <div className="font-mono tabular-nums text-text-dim">
+              {r.position}
+            </div>
             <div className="truncate text-text">{r.email}</div>
-            <div className="text-xs text-text-muted" title={r.created_at}>
+            <div
+              className="font-mono text-xs text-text-muted"
+              title={r.created_at}
+            >
               {relativeTime(r.created_at)}
             </div>
-            <div className="text-xs text-text-muted">{r.source ?? "organic"}</div>
+            <div className="text-xs text-text-muted">
+              {r.source ?? "organic"}
+            </div>
             <div className="text-right">
               {r.referrals_count > 0 ? (
-                <span className="inline-flex items-center justify-center rounded-full bg-aurora-purple/15 px-2 py-0.5 font-mono text-[10px] tabular-nums text-aurora-purple">
+                <span className="inline-flex items-center justify-center rounded-full border border-aurora-purple/25 bg-aurora-purple/12 px-2 py-0.5 font-mono text-[10px] tabular-nums text-aurora-purple">
                   {r.referrals_count}
                 </span>
               ) : (
@@ -413,9 +437,17 @@ function RowsTable({
             </div>
             <div className="text-center">
               {r.email_confirmed ? (
-                <Check className="mx-auto h-3.5 w-3.5 text-aurora-green" />
+                <span
+                  className="mx-auto inline-flex h-5 w-5 items-center justify-center rounded-full bg-aurora-green/12"
+                  title="Confirmed"
+                >
+                  <Check className="h-3 w-3 text-aurora-green" />
+                </span>
               ) : (
-                <span className="mx-auto inline-block h-1.5 w-1.5 rounded-full bg-text-dim" />
+                <span
+                  className="mx-auto inline-block h-1.5 w-1.5 rounded-full bg-text-dim/60"
+                  title="Unconfirmed"
+                />
               )}
             </div>
             <div onClick={(e) => e.stopPropagation()}>
@@ -534,20 +566,20 @@ function Pagination({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const pageBtn =
+    "inline-flex h-8 items-center gap-1 rounded-full border border-border-soft bg-surface/60 px-3 text-xs text-text-muted transition-colors hover:border-aurora-purple/45 hover:bg-surface-elevated/80 hover:text-text disabled:opacity-40 disabled:hover:border-border-soft disabled:hover:bg-surface/60";
   return (
-    <div className="mt-4 flex items-center justify-between text-xs text-text-muted">
-      <div>
-        Showing page <span className="font-mono tabular-nums text-text">{page}</span>{" "}
-        of <span className="font-mono tabular-nums text-text">{totalPages}</span>{" "}
-        · <span className="font-mono tabular-nums">{total}</span> total
+    <div className="mt-5 flex items-center justify-between text-xs text-text-muted">
+      <div className="font-mono">
+        Page{" "}
+        <span className="tabular-nums text-text">{page}</span>{" "}
+        of{" "}
+        <span className="tabular-nums text-text">{totalPages}</span>
+        <span className="mx-2 text-text-dim">·</span>
+        <span className="tabular-nums">{total}</span> total
       </div>
-      <div className="flex gap-1">
-        <button
-          type="button"
-          onClick={onPrev}
-          disabled={page <= 1}
-          className="inline-flex h-8 items-center gap-1 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45 disabled:opacity-40"
-        >
+      <div className="flex gap-1.5">
+        <button type="button" onClick={onPrev} disabled={page <= 1} className={pageBtn}>
           <ChevronLeft className="h-3 w-3" />
           Prev
         </button>
@@ -555,7 +587,7 @@ function Pagination({
           type="button"
           onClick={onNext}
           disabled={page >= totalPages}
-          className="inline-flex h-8 items-center gap-1 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45 disabled:opacity-40"
+          className={pageBtn}
         >
           Next
           <ChevronRight className="h-3 w-3" />
@@ -591,42 +623,46 @@ function DetailContent({ row, onMutated }: { row: Row; onMutated: () => void }) 
       ? `${window.location.origin}/?ref=${row.referral_code}`
       : "";
   return (
-    <div className="space-y-4 pt-4">
-      <div>
-        <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+    <div className="space-y-5 pt-4">
+      <div className="rounded-2xl border border-border-soft bg-surface/60 p-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
           Position
         </div>
-        <div className="mt-1 font-serif text-4xl text-text">#{row.position}</div>
+        <div className="mt-1 font-serif text-4xl font-medium tracking-[-0.02em] text-text">
+          #{row.position}
+        </div>
       </div>
-      <Field label="Email" value={row.email} />
-      <Field label="Joined" value={new Date(row.created_at).toLocaleString()} />
-      <Field
-        label="Email confirmed"
-        value={
-          row.email_confirmed
-            ? `✓ ${row.email_confirmed_at ? new Date(row.email_confirmed_at).toLocaleString() : ""}`
-            : "Not confirmed"
-        }
-      />
-      <Field label="Source" value={row.source ?? "organic"} />
-      <Field label="Referrals" value={String(row.referrals_count)} />
-      <Field
-        label="Referral link"
-        value={refUrl}
-        action={
-          <button
-            type="button"
-            onClick={() => {
-              void navigator.clipboard.writeText(refUrl);
-              toast.success("Link copied");
-            }}
-            className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text"
-          >
-            <Copy className="h-3 w-3" />
-          </button>
-        }
-      />
-      <div className="pt-4">
+      <div className="space-y-4">
+        <Field label="Email" value={row.email} />
+        <Field label="Joined" value={new Date(row.created_at).toLocaleString()} />
+        <Field
+          label="Email confirmed"
+          value={
+            row.email_confirmed
+              ? `✓ ${row.email_confirmed_at ? new Date(row.email_confirmed_at).toLocaleString() : ""}`
+              : "Not confirmed"
+          }
+        />
+        <Field label="Source" value={row.source ?? "organic"} />
+        <Field label="Referrals" value={String(row.referrals_count)} />
+        <Field
+          label="Referral link"
+          value={refUrl}
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(refUrl);
+                toast.success("Link copied");
+              }}
+              className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-elevated hover:text-text"
+            >
+              <Copy className="h-3 w-3" />
+            </button>
+          }
+        />
+      </div>
+      <div className="border-t border-border-soft pt-5">
         <button
           type="button"
           onClick={async () => {
@@ -641,7 +677,7 @@ function DetailContent({ row, onMutated }: { row: Row; onMutated: () => void }) 
             }
           }}
           disabled={row.email_confirmed}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/70 px-3 text-xs text-text hover:border-aurora-purple/45 disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/60 px-3.5 text-xs text-text-muted transition-colors hover:border-aurora-purple/45 hover:bg-surface-elevated/80 hover:text-text disabled:opacity-50"
         >
           <CheckCheck className="h-3.5 w-3.5" />
           {row.email_confirmed ? "Already confirmed" : "Mark confirmed"}
@@ -661,11 +697,11 @@ function Field({
   action?: React.ReactNode;
 }) {
   return (
-    <div>
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+    <div className="rounded-xl border border-border-soft/70 bg-surface/40 px-4 py-3">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         {label}
       </div>
-      <div className="mt-1 flex items-center gap-2">
+      <div className="mt-1.5 flex items-center gap-2">
         <div className="flex-1 break-all text-sm text-text">{value}</div>
         {action}
       </div>

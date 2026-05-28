@@ -24,33 +24,35 @@ export default async function AdminPage() {
   const stats = await loadStats();
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
       {/* Header */}
       <header
-        className="glass-strong relative overflow-hidden rounded-3xl p-6 md:p-8"
+        className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 backdrop-blur-2xl md:p-9"
         style={{
-          boxShadow:
-            "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.30)",
+          boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
         }}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-aurora-purple" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">
+              <Shield className="h-3.5 w-3.5 text-aurora-purple" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
                 Admin
               </span>
             </div>
-            <h1 className="mt-1 text-3xl font-medium tracking-tight md:text-4xl">
+            <h1 className="mt-3 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-5xl">
               Admin panel
             </h1>
-            <p className="mt-1.5 max-w-xl text-sm text-text-muted">
+            <p className="mt-3 max-w-xl text-sm text-text-muted md:text-base">
               You&apos;re seeing this because you&apos;re listed in{" "}
-              <code className="font-mono text-[12px]">ADMIN_EMAILS</code>.
+              <code className="rounded bg-surface/70 px-1.5 py-0.5 font-mono text-[12px] text-text">
+                ADMIN_EMAILS
+              </code>
+              .
             </p>
           </div>
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-white"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white"
             style={{
               background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
               boxShadow: "0 8px 24px -6px rgba(167,136,255,0.55)",
@@ -63,7 +65,7 @@ export default async function AdminPage() {
       </header>
 
       {/* Stats grid */}
-      <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
           icon={<Users className="h-4 w-4" />}
           accent="#5B8DFF"
@@ -103,18 +105,23 @@ export default async function AdminPage() {
       </section>
 
       {/* Future sections */}
-      <section className="mt-10">
-        <h2 className="text-xl font-medium tracking-tight md:text-2xl">Coming soon</h2>
+      <section className="mt-12">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          Roadmap
+        </div>
+        <h2 className="mt-2 font-serif text-2xl font-medium tracking-[-0.01em] md:text-3xl">
+          Coming soon
+        </h2>
         <p className="mt-1 text-sm text-text-muted">
           More admin tooling lands here as you need it.
         </p>
-        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
           {FUTURE.map((c) => {
             const Icon = c.icon;
             return (
               <div
                 key={c.title}
-                className="glass relative overflow-hidden rounded-2xl p-5 opacity-60"
+                className="relative overflow-hidden rounded-2xl border border-border-soft bg-surface/60 p-5 opacity-70"
               >
                 <span
                   className="flex h-9 w-9 items-center justify-center rounded-xl"
@@ -132,8 +139,8 @@ export default async function AdminPage() {
                 <p className="mt-1 text-xs leading-relaxed text-text-muted">
                   {c.blurb}
                 </p>
-                <span className="absolute right-3 top-3 inline-flex items-center rounded-full border border-border-soft bg-surface/70 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-dim">
-                  Coming soon
+                <span className="absolute right-3 top-3 inline-flex items-center rounded-full border border-border-soft bg-surface/70 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-text-dim">
+                  Soon
                 </span>
               </div>
             );
@@ -142,7 +149,7 @@ export default async function AdminPage() {
       </section>
 
       {/* Methodology */}
-      <p className="mt-10 text-[11px] text-text-dim">
+      <p className="mt-12 text-[11px] text-text-dim">
         Stats fetched via the service-role client at request time.{" "}
         {stats.warning && (
           <span className="text-aurora-peach">⚠ {stats.warning}</span>
@@ -264,9 +271,9 @@ function StatCard({
 }) {
   return (
     <div
-      className="glass relative overflow-hidden rounded-2xl p-5"
+      className="relative overflow-hidden rounded-2xl border border-border-soft bg-surface-elevated/90 p-6 backdrop-blur-2xl"
       style={{
-        boxShadow: `inset 0 1px 0 0 var(--surface-glass-highlight), 0 12px 28px -12px ${accent}45`,
+        boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
       }}
     >
       <span
@@ -279,13 +286,13 @@ function StatCard({
       >
         {icon}
       </span>
-      <div className="mt-3 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+      <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
         {label}
       </div>
-      <div className="mt-1 text-2xl font-medium tabular-nums tracking-tight text-text">
+      <div className="mt-1.5 text-2xl font-medium tabular-nums tracking-tight text-text">
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[11px] text-text-muted">{sub}</div>}
+      {sub && <div className="mt-1 text-[11px] text-text-muted">{sub}</div>}
     </div>
   );
 }

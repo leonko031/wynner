@@ -107,10 +107,25 @@ export default function ScanPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-10">
-      <div className="mb-10">
-        <Stepper current={step} />
-      </div>
+    <main className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <header className="mb-10 md:mb-12 space-y-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          New scan
+        </p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <h1 className="font-serif text-4xl md:text-5xl font-medium leading-[1.05] tracking-[-0.02em] text-text">
+              Run a deep research scan
+            </h1>
+            <p className="text-sm md:text-base text-text-muted">
+              Four steps, one verdict — depth, details, target, then live research.
+            </p>
+          </div>
+        </div>
+        <div className="pt-2">
+          <Stepper current={step} />
+        </div>
+      </header>
 
       <AnimatePresence mode="popLayout" initial={false}>
         {step === 0 && (
@@ -139,7 +154,7 @@ export default function ScanPage() {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="grid grid-cols-1 gap-8 md:grid-cols-[5fr_4fr]"
           >
-            <div className="space-y-4">
+            <div className="space-y-5">
               <ModeBadge mode={mode} onChange={() => setStep(0)} />
               <Step1Details
                 draft={draft}
@@ -158,7 +173,7 @@ export default function ScanPage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-5"
+            className="space-y-6"
           >
             <ModeBadge mode={mode} onChange={() => setStep(0)} />
             <Step2Country
@@ -173,23 +188,51 @@ export default function ScanPage() {
 
             {/* Cost summary right above the continue gate */}
             {draft.targetCountry && (
-              <div className="glass mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+              <div
+                className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border-soft bg-surface-elevated/90 p-5 backdrop-blur-2xl md:p-6"
+                style={{
+                  boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
+                }}
+              >
                 <div className="flex items-center gap-3">
-                  <SparkIcon size={16} />
-                  <div className="text-sm">
-                    <span className="font-medium text-text">
-                      {meta.label} → ✦ {meta.creditCost} credits
-                    </span>
-                    <span className="ml-2 text-text-muted">
-                      Balance after: {balanceAfter}
-                    </span>
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(91,141,255,0.10), rgba(167,136,255,0.14), rgba(255,137,197,0.10))",
+                    }}
+                  >
+                    <SparkIcon size={16} />
+                  </span>
+                  <div className="space-y-0.5">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                      Cost preview
+                    </p>
+                    <div className="text-sm">
+                      <span className="font-medium text-text">
+                        {meta.label} · ✦ {meta.creditCost} credits
+                      </span>
+                      <span className="ml-2 text-text-muted">
+                        Balance after: {balanceAfter}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <Button
                   size="lg"
                   onClick={() => setStep(3)}
-                  className="rounded-full"
+                  className="rounded-full text-white"
                   disabled={balance < meta.creditCost}
+                  style={
+                    balance < meta.creditCost
+                      ? undefined
+                      : {
+                          background:
+                            "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+                          boxShadow:
+                            "0 8px 22px -6px rgba(91,141,255,0.55)",
+                        }
+                  }
                 >
                   {balance < meta.creditCost
                     ? `Need ${meta.creditCost - balance} more credits`
@@ -213,10 +256,20 @@ function ModeBadge({
 }) {
   const meta = RESEARCH_MODE_META[mode];
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-border-soft bg-surface/60 px-4 py-2.5 text-xs">
-      <div className="flex items-center gap-2">
-        <SparkIcon size={12} />
-        <span className="text-text-muted">Depth:</span>
+    <div className="flex items-center justify-between rounded-2xl border border-border-soft bg-surface/60 px-4 py-3 text-xs">
+      <div className="flex items-center gap-2.5">
+        <span
+          className="flex h-6 w-6 items-center justify-center rounded-full ring-1 ring-inset ring-white/10"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(91,141,255,0.10), rgba(167,136,255,0.14), rgba(255,137,197,0.10))",
+          }}
+        >
+          <SparkIcon size={12} />
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          Depth
+        </span>
         <span className="font-medium text-text">{meta.label}</span>
         <span className="font-mono tabular-nums text-text-dim">
           · ✦ {meta.creditCost}
@@ -225,7 +278,7 @@ function ModeBadge({
       <button
         type="button"
         onClick={onChange}
-        className="text-text-muted underline-offset-2 hover:text-text hover:underline"
+        className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted underline-offset-4 transition-colors hover:text-text hover:underline"
       >
         Change
       </button>

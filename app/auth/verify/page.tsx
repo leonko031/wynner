@@ -53,10 +53,9 @@ export default function VerifyPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong w-full max-w-md rounded-3xl p-8 text-center"
+        className="w-full max-w-md rounded-3xl border border-border-soft bg-surface-elevated/90 p-7 text-center backdrop-blur-2xl md:p-9"
         style={{
-          boxShadow:
-            "0 0 0 1px rgba(167,136,255,0.30), 0 30px 60px -20px rgba(91,141,255,0.30)",
+          boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)",
         }}
       >
         <div className="mx-auto flex h-16 w-16 items-center justify-center">
@@ -70,7 +69,7 @@ export default function VerifyPage() {
               className="absolute inset-0 rounded-2xl"
               style={{
                 background:
-                  "radial-gradient(closest-side, rgba(167,136,255,0.55), transparent 70%)",
+                  "radial-gradient(closest-side, rgba(167,136,255,0.45), transparent 70%)",
                 filter: "blur(16px)",
               }}
             />
@@ -86,11 +85,12 @@ export default function VerifyPage() {
           </motion.div>
         </div>
 
-        <h1 className="mt-6 text-3xl font-medium tracking-tight text-text md:text-4xl">
+        <h1 className="mt-7 font-serif text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-text md:text-5xl">
           Check your email
         </h1>
-        <p className="mt-2 text-sm text-text-muted">
-          We sent a confirmation link to <strong className="text-text">{email}</strong>
+        <p className="mt-3 text-sm text-text-muted md:text-base">
+          We sent a confirmation link to{" "}
+          <strong className="text-text">{email}</strong>
         </p>
         <p className="mt-5 text-sm leading-relaxed text-text-muted">
           Click the link in that email to verify your account. It usually arrives within a minute.
@@ -119,7 +119,7 @@ export default function VerifyPage() {
           </Link>
         </div>
 
-        <p className="mt-6 text-[11px] text-text-dim">
+        <p className="mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
           Can&apos;t find it? Check your spam folder.
         </p>
       </motion.div>

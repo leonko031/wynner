@@ -428,7 +428,7 @@ export default function DashboardPage() {
     <>
       <GlobalCanvas />
 
-      <main className="relative">
+      <main className="relative isolate text-text">
         <CinematicOpening
           firstName={firstName}
           topPick={topPick}
@@ -438,43 +438,53 @@ export default function DashboardPage() {
           scrollTargetId={SECTION_IDS.briefing}
         />
 
-        <DailyBrief
-          briefing={briefingState.briefing}
-          loading={briefingState.loading}
-          cached={briefingState.cached}
-          fellBack={briefingState.fellBack}
-          generatedAt={briefingState.generatedAt}
-          isAdmin={isAdmin}
-          canAfford={balance >= 1}
-          onRegenerate={regenerateBriefing}
-          marketVibe={marketVibe}
-          signals={signals}
-          sectionId={SECTION_IDS.briefing}
-        />
+        <div className="space-y-10 md:space-y-12">
+          <DailyBrief
+            briefing={briefingState.briefing}
+            loading={briefingState.loading}
+            cached={briefingState.cached}
+            fellBack={briefingState.fellBack}
+            generatedAt={briefingState.generatedAt}
+            isAdmin={isAdmin}
+            canAfford={balance >= 1}
+            onRegenerate={regenerateBriefing}
+            marketVibe={marketVibe}
+            signals={signals}
+            sectionId={SECTION_IDS.briefing}
+          />
 
-        <PicksGallery
-          picks={picks}
-          editorialTitle={editorialTitle}
-          sectionId={SECTION_IDS.picks}
-          pickOnePitch={pickOnePitch}
-        />
+          <SectionDivider />
 
-        <OperatorPulse
-          featured={featured}
-          streak={streakProps}
-          winRate={winRateProps}
-          topNiche={topNicheProps}
-          bestCountry={bestCountryProps}
-          sectionId={SECTION_IDS.pulse}
-        />
+          <PicksGallery
+            picks={picks}
+            editorialTitle={editorialTitle}
+            sectionId={SECTION_IDS.picks}
+            pickOnePitch={pickOnePitch}
+          />
 
-        <IntelligenceTrail sectionId={SECTION_IDS.trail} />
+          <SectionDivider />
 
-        <NextMove
-          recommendation={briefingState.briefing?.recommendation ?? null}
-          loading={briefingState.loading}
-          sectionId={SECTION_IDS.next}
-        />
+          <OperatorPulse
+            featured={featured}
+            streak={streakProps}
+            winRate={winRateProps}
+            topNiche={topNicheProps}
+            bestCountry={bestCountryProps}
+            sectionId={SECTION_IDS.pulse}
+          />
+
+          <SectionDivider />
+
+          <IntelligenceTrail sectionId={SECTION_IDS.trail} />
+
+          <SectionDivider />
+
+          <NextMove
+            recommendation={briefingState.briefing?.recommendation ?? null}
+            loading={briefingState.loading}
+            sectionId={SECTION_IDS.next}
+          />
+        </div>
 
         <EditorialFooter
           generatedAt={briefingState.generatedAt}
@@ -490,6 +500,21 @@ export default function DashboardPage() {
         lastBriefMs={briefingState.ms}
       />
     </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quiet section divider — hairline rule, contained inside the page gutter.    */
+/* -------------------------------------------------------------------------- */
+
+function SectionDivider() {
+  return (
+    <div
+      className="mx-auto w-full max-w-7xl px-5 md:px-8"
+      aria-hidden="true"
+    >
+      <div className="h-px w-full bg-border-soft/60" />
+    </div>
   );
 }
 
@@ -600,24 +625,52 @@ function EditorialFooter({
     ? new Date(generatedAt).toLocaleDateString()
     : new Date().toLocaleDateString();
   return (
-    <footer className="mx-auto w-full max-w-7xl px-6 pb-16 md:px-12">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-text-dim">
-        <div className="flex items-center gap-2">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
+    <footer className="mx-auto w-full max-w-7xl px-5 pt-16 pb-20 md:px-8 md:pt-20 md:pb-24">
+      <div
+        className="rounded-3xl border border-border-soft bg-surface-elevated/90 p-6 backdrop-blur-2xl md:p-8"
+        style={{ boxShadow: "0 24px 60px -24px rgba(0,0,0,0.45)" }}
+      >
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+                }}
+              />
+              Colophon
+            </div>
+            <p className="font-serif text-2xl font-medium leading-[1.1] tracking-[-0.01em] text-text md:text-3xl">
+              Wynner edition · {date}
+            </p>
+            <p className="text-sm text-text-muted md:text-base">
+              Composed by <span className="text-text">{FLASH_MODEL}</span>. Signals refresh every few minutes; the briefing
+              regenerates on demand.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="group inline-flex items-center gap-2 self-start rounded-full px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-transform hover:-translate-y-px md:self-end"
             style={{
-              background: "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+              background:
+                "linear-gradient(135deg, #5B8DFF, #A788FF, #FF89C5)",
+              boxShadow: "0 18px 40px -18px rgba(167,136,255,0.55)",
             }}
-          />
-          Wynner · {date} · {FLASH_MODEL}
+          >
+            <span
+              className="h-1 w-1 rounded-full bg-white/90"
+              aria-hidden="true"
+            />
+            Refresh today&apos;s brief
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => void onRefresh()}
-          className="text-aurora-purple hover:text-aurora-pink"
-        >
-          Refresh today&apos;s brief
-        </button>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border-soft/70 pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          <span>Shift + 1..5 jumps · Shift + B refreshes</span>
+          <span className="text-text-dim/80">© Wynner</span>
+        </div>
       </div>
     </footer>
   );
