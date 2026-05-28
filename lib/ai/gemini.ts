@@ -63,22 +63,16 @@ export function isGeminiAvailable(): boolean {
 }
 
 /**
- * Grounding (Google Search tool) is OPT-IN as of the v3 stability pass.
- * Reason: grounding requires a paid-tier Gemini key + working billing setup,
- * and silently fails with cryptic 400s when the key/billing isn't right —
- * making scans look "broken" even though the ungrounded path works fine.
+ * Grounding (Google Search tool) is ON by default — that's the core product
+ * experience (live web research, cited sources). Set GEMINI_GROUNDING_ENABLED
+ * to "false" to bypass it (e.g. dev environment, billing issue).
  *
- * Set GEMINI_GROUNDING_ENABLED=true in Vercel to flip it on once you've
- * confirmed grounding works for your account (see docs/GROUNDING_DEBUG_LOG.md
- * for verification steps).
- *
- * Default off → every "grounded" call goes straight to ungroundedFallback,
- * which calls Gemini in plain JSON mode. Works with ANY Gemini key. Scans
- * complete reliably with verdicts, hook angles, and the full pipeline —
- * just without cited live web sources.
+ * When grounding is on but the call fails for any reason, the wrapper falls
+ * back to ungroundedFallback (plain JSON mode) so scans always complete —
+ * the report just won't have cited sources for that stage.
  */
 export function isGroundingEnabled(): boolean {
-  return (process.env.GEMINI_GROUNDING_ENABLED ?? "false").toLowerCase() === "true";
+  return (process.env.GEMINI_GROUNDING_ENABLED ?? "true").toLowerCase() !== "false";
 }
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

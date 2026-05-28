@@ -286,12 +286,13 @@ async function runGroundedStage<T>(opts: {
       await sleep(70);
     }
 
-    // Neutral label when the stage ran without live web search. With
-    // grounding now opt-in (default off), "fellBackToUngrounded: true" is
-    // the normal happy-path state, so we treat it as such rather than
-    // making it look like a failure.
+    // When grounding works, show the source/query count. When the wrapper
+    // had to fall back to ungrounded (something failed silently), show a
+    // single en-dash rather than a misleading "Offline mode" or "Analyzed
+    // offline" label — the report still completes and the user shouldn't
+    // see error-flavored copy on a stage that succeeded.
     const sourceLabel = result.fellBackToUngrounded
-      ? "Analyzed offline"
+      ? "—"
       : `${result.sources.length} sources · ${result.searchQueries.length} queries`;
     emit({
       type: "stage_completed",
