@@ -9,6 +9,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 export const runtime = "nodejs";
 // Disable any caching layer in front of the stream.
 export const dynamic = "force-dynamic";
+// CRITICAL: Vercel's default serverless function timeout is 60s on Pro and
+// 10s on Hobby. A Deep Research scan runs 7+ grounded discovery stages plus
+// 7+ synthesis stages — each grounded call takes 10-20s, so the full
+// pipeline routinely needs 2-4 minutes. Without this the function dies
+// mid-scan and every stage shows as failed ("Offline mode for this stage")
+// — which is exactly the symptom users were seeing. 300s is the max on Pro
+// with default config; bump to 800s if you upgrade to fluid compute.
+export const maxDuration = 300;
 
 /**
  * Per-user concurrent scan guard. In-memory map keyed by user id (or IP in
