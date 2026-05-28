@@ -379,16 +379,32 @@ export async function geminiWithGrounding<T>(opts: {
       };
     } catch (err) {
       lastError = err;
+      const errMsg = err instanceof Error ? err.message : String(err);
       gdebug(`${label} attempt ${attempt + 1} — exception`, {
         name: err instanceof Error ? err.name : "unknown",
-        message: err instanceof Error ? err.message : String(err),
+        message: errMsg,
       });
+      // Free-tier Gemini keys cannot use Google Search grounding — every
+      // grounded call returns a 400/PERMISSION_DENIED. Detect that distinct
+      // failure mode and bail immediately with a useful message. Retrying or
+      // falling back to ungrounded would silently mask the real problem
+      // ("Offline mode for this stage" everywhere, forever, with no fix).
+      if (isFreeTierGroundingError(errMsg)) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[geminiWithGrounding] ${label}: GEMINI_FREE_TIER — Google Search grounding requires a paid Gemini API key. Upgrade at https://aistudio.google.com/app/apikey, or set GEMINI_GROUNDING_ENABLED=false to skip grounding entirely.`,
+        );
+        throw new Error(
+          "GEMINI_FREE_TIER: Your Gemini API key can't use Google Search grounding (paid tier required). Upgrade at https://aistudio.google.com/app/apikey, or set GEMINI_GROUNDING_ENABLED=false to run scans without sources.",
+        );
+      }
     }
   }
 
-  // Both attempts failed. Log + fall back to ungrounded so the pipeline
-  // continues. The orchestrator marks the section's confidence "low" and the
-  // UI shows the "Offline mode for this stage" indicator.
+  // Both attempts failed (and the error wasn't the free-tier signature).
+  // Log + fall back to ungrounded so the pipeline continues. The orchestrator
+  // marks the section's confidence "low" and the UI shows the "Offline mode
+  // for this stage" indicator.
   gdebug(`${label} — all grounded attempts failed, falling back to ungrounded`, {
     finalError: lastError instanceof Error ? lastError.message : String(lastError),
   });
@@ -398,6 +414,34 @@ export async function geminiWithGrounding<T>(opts: {
     lastError instanceof Error ? lastError.message : String(lastError),
   );
   return ungroundedFallback<T>(modelName, opts.prompt, opts.schema, started, "retries_exhausted");
+}
+
+/**
+ * Heuristic: does this error message look like the Gemini API rejecting a
+ * grounded call because the key is on the free tier? Free-tier keys return
+ * a 400 / PERMISSION_DENIED when `tools: [{ googleSearch: {} }]` is set,
+ * with messages mentioning "Search Grounding", "not supported", or
+ * "PERMISSION_DENIED". We match defensively across phrasings.
+ */
+function isFreeTierGroundingError(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  const looksLikePermission =
+    lower.includes("permission_denied") ||
+    lower.includes("permission denied") ||
+    lower.includes(" 403") ||
+    lower.includes("status: 403") ||
+    lower.includes("status: 400");
+  const mentionsGrounding =
+    lower.includes("grounding") ||
+    lower.includes("google search") ||
+    lower.includes("googlesearch") ||
+    lower.includes("search retrieval") ||
+    lower.includes("free tier") ||
+    lower.includes("free-tier") ||
+    lower.includes("paid tier") ||
+    lower.includes("not supported") ||
+    lower.includes("billing");
+  return looksLikePermission && mentionsGrounding;
 }
 
 async function ungroundedFallback<T>(

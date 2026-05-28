@@ -305,10 +305,18 @@ async function runGroundedStage<T>(opts: {
       },
     };
   } catch (err) {
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    // Surface the free-tier-key error in plain English so the UI can show
+    // a clear "upgrade your key" hint instead of a generic "stage failed".
+    // The wrapper throws with the GEMINI_FREE_TIER: prefix when it detects
+    // a permission error from Gemini that's specifically about grounding.
+    const isFreeTier = rawMessage.startsWith("GEMINI_FREE_TIER:");
     emit({
       type: "stage_failed",
       stage: opts.stage,
-      error: err instanceof Error ? err.message : String(err),
+      error: isFreeTier
+        ? "Your Gemini API key can't use Google Search grounding (paid tier required). Upgrade at https://aistudio.google.com/app/apikey, or set GEMINI_GROUNDING_ENABLED=false to run scans without sources."
+        : rawMessage,
       usedFallback: true,
     });
     return {
