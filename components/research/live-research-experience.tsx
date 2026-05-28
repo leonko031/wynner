@@ -285,10 +285,17 @@ export function LiveResearchExperience({ input }: { input: LiveResearchInput }) 
               };
             }
             if (ev.type === "stage_failed") {
+              // Show the actual error (truncated for the card) instead of a
+              // generic "Offline mode" — the user needs to see WHY it failed
+              // so they can act on it (key issue, schema mismatch, etc.).
+              const detailMsg =
+                typeof ev.error === "string" && ev.error.length > 0
+                  ? ev.error.slice(0, 140)
+                  : "Stage didn't return usable data";
               return {
                 ...s,
                 status: "failed",
-                detail: "Offline mode for this stage",
+                detail: detailMsg,
                 usedFallback: ev.usedFallback,
               };
             }

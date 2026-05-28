@@ -125,8 +125,8 @@ export function StageProgressCard({ stage, index }: Props) {
                 )}
               >
                 {stage.detail}
-                {stage.usedFallback && stage.detail !== "Offline mode for this stage" && (
-                  <span className="text-aurora-peach"> · offline mode</span>
+                {stage.usedFallback && (
+                  <span className="text-aurora-peach"> · offline</span>
                 )}
               </div>
             )}

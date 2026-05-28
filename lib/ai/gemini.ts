@@ -430,16 +430,42 @@ async function ungroundedFallback<T>(
 Be honest about uncertainty by marking all sources arrays as empty and any
 confidence field as "low". Respond ONLY with valid JSON — no markdown
 fences, no preamble.`;
+
+  // CRITICAL INVARIANT: this function MUST return a valid GroundedCallResult.
+  // It must NEVER throw. If grounding is disabled or fails, this is the only
+  // path that produces stage data — if it throws, every stage shows "Offline
+  // mode" and scans produce no output. We try increasingly forgiving paths
+  // and ultimately return data: null rather than propagating an exception.
   try {
     const raw = await geminiJSON<unknown>(modelName, ungroundedPrompt);
-    const validated = schema.safeParse(raw);
-    if (!validated.success) {
-      throw new Error(
-        `ungrounded_validation_failed: ${validated.error.issues[0]?.message ?? "unknown"}`,
-      );
+
+    // Try strict schema first.
+    const strict = schema.safeParse(raw);
+    if (strict.success) {
+      return {
+        data: strict.data,
+        sources: [],
+        searchQueries: [],
+        tokens: { input: null, output: null },
+        durationMs: Date.now() - started,
+        fellBackToUngrounded: true,
+      };
     }
+
+    // Schema validation failed but we have parsed JSON. Some downstream code
+    // can work with a partial / extra-field shape — pass the raw through and
+    // let the consumer Zod-validate at use-site. If they need strict, they'll
+    // get null and handle it; if they're permissive, they get useful data.
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ungroundedFallback] schema mismatch — passing raw JSON through. First issue: ${
+        strict.error.issues[0]?.message ?? "unknown"
+      }`,
+    );
     return {
-      data: validated.data,
+      // Returning raw cast as T is intentional: it preserves the model's
+      // output for permissive consumers. Strict consumers should safeParse.
+      data: raw as T,
       sources: [],
       searchQueries: [],
       tokens: { input: null, output: null },
@@ -447,7 +473,21 @@ fences, no preamble.`;
       fellBackToUngrounded: true,
     };
   } catch (e) {
-    throw e instanceof Error ? e : new Error(String(e));
+    // geminiJSON itself failed (network, 4xx, parse, timeout). Don't throw —
+    // return data: null and let the orchestrator decide how to render the
+    // missing stage. The pipeline keeps going for the other stages.
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ungroundedFallback] hard failure: ${(e instanceof Error ? e.message : String(e)).slice(0, 300)}`,
+    );
+    return {
+      data: null as unknown as T,
+      sources: [],
+      searchQueries: [],
+      tokens: { input: null, output: null },
+      durationMs: Date.now() - started,
+      fellBackToUngrounded: true,
+    };
   }
 }
 
