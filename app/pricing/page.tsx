@@ -212,7 +212,7 @@ export default function PricingPage() {
 
       {/* PLANS */}
       <section className="px-6 pb-20">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-3 md:items-center">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 lg:items-stretch">
           {/* Suspense wrapper so useSearchParams stays inside an explicit
               boundary (Next 16 requirement). */}
           <Suspense fallback={null}>
@@ -479,7 +479,9 @@ function HighlightedPlanGrid({ interval }: { interval: BillingInterval }) {
   const searchParams = useSearchParams();
   const raw = (searchParams.get("highlight") ?? "").toLowerCase();
   const highlightOverride: PlanTier | null =
-    raw === "starter" || raw === "pro" || raw === "operator" ? (raw as PlanTier) : null;
+    raw === "starter" || raw === "pro" || raw === "operator" || raw === "agency"
+      ? (raw as PlanTier)
+      : null;
 
   useEffect(() => {
     if (!highlightOverride) return;
@@ -497,7 +499,7 @@ function HighlightedPlanGrid({ interval }: { interval: BillingInterval }) {
 
   return (
     <>
-      {(["starter", "pro", "operator"] as PlanTier[]).map((p) => (
+      {(["starter", "pro", "operator", "agency"] as PlanTier[]).map((p) => (
         <div key={p} id={`plan-${p}`} className="scroll-mt-24">
           <PlanCard plan={p} interval={interval} highlight={p === highlighted} />
         </div>

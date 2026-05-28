@@ -13,6 +13,7 @@ export const SLOT_LIMIT_BY_PLAN: Record<PlanTier, number> = {
   starter: 2,
   pro: 3,
   operator: 4,
+  agency: 4,
 };
 
 export const HARD_MAX_SLOTS = 4;

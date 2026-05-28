@@ -35,6 +35,7 @@ const PLAN_COLORS = {
   starter: "#5B8DFF",
   pro: "#A788FF",
   operator: "#FF89C5",
+  agency: "#FFB088",
 } as const;
 
 /**

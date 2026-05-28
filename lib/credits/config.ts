@@ -3,6 +3,10 @@ import type { CreditActionType, PlanTier } from "@/types/credits";
 /**
  * Per-action credit costs. Spend actions are stored as positive integers here;
  * the store negates them when creating the transaction.
+ *
+ * Calibrated against real Gemini API cost (Flash + Pro tokens + grounded
+ * search queries). 1 credit ≈ $0.08 cost at avg usage. See docs/PRICING.md
+ * for the full unit-economics breakdown.
  */
 export const CREDIT_COSTS = {
   basic_scan: 1,
@@ -22,7 +26,7 @@ export type PlanConfig = {
   tagline: string;
   /** Price in EUR — converted to whole cents for Stripe. */
   priceMonthly: number;
-  /** Yearly is monthly × 12 × 0.8 (20% off). */
+  /** Yearly: 10 months for the price of 12 (2 months free). */
   priceYearly: number;
   monthlyCredits: number;
   /** Max credits that can carry over month-to-month. 0 = no rollover. */
@@ -40,20 +44,35 @@ export type PlanConfig = {
     customBranding?: boolean;
     priorityQueue?: boolean;
     prioritySupport?: boolean;
+    /** Agency-only: white-label PDFs with client logo + workspaces. */
+    whiteLabel?: boolean;
+    /** Agency-only: dedicated Slack channel for fast support. */
+    slackSupport?: boolean;
   };
   bullets: string[];
 };
 
+/**
+ * Pricing v2 (2026 launch). See docs/PRICING.md for competitor benchmarks
+ * and the unit-economics model. The headline rule: every paid tier hits
+ * 65%+ gross margin at the typical usage pattern (40% quick / 50% standard
+ * / 10% full-power scans). Starter is a loss leader by design.
+ *
+ * Naming:
+ *   • Pro      — solo operators, the most common SKU
+ *   • Operator — small teams + API users, the AOV bump from Pro
+ *   • Agency   — resellers + larger teams, white-label + Slack support
+ */
 export const PLANS: Record<PlanTier, PlanConfig> = {
   starter: {
     id: "starter",
     name: "Starter",
-    tagline: "Try the magic",
+    tagline: "See what Wynner does",
     priceMonthly: 0,
     priceYearly: 0,
-    monthlyCredits: 10,
+    monthlyCredits: 5,
     rolloverCap: 0,
-    vaultLimit: 25,
+    vaultLimit: 10,
     features: {
       scrapers: false,
       voiceMining: false,
@@ -62,9 +81,9 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       seats: 1,
     },
     bullets: [
-      "10 credits each month",
+      "5 credits each month",
       "Five-pillar scoring engine",
-      "Save up to 25 products",
+      "Save up to 10 products",
       "Compare across 3 products",
       "Watermarked exports",
     ],
@@ -72,9 +91,9 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
   pro: {
     id: "pro",
     name: "Pro",
-    tagline: "For the serious operator",
-    priceMonthly: 19,
-    priceYearly: Math.round(19 * 12 * 0.8),
+    tagline: "For the solo operator",
+    priceMonthly: 39,
+    priceYearly: 39 * 10, // 2 months free
     monthlyCredits: 100,
     rolloverCap: 200,
     vaultLimit: null,
@@ -100,10 +119,10 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     id: "operator",
     name: "Operator",
     tagline: "Built to scale",
-    priceMonthly: 49,
-    priceYearly: Math.round(49 * 12 * 0.8),
-    monthlyCredits: 300,
-    rolloverCap: 600,
+    priceMonthly: 99,
+    priceYearly: 99 * 10, // 2 months free
+    monthlyCredits: 350,
+    rolloverCap: 700,
     vaultLimit: null,
     features: {
       scrapers: true,
@@ -118,14 +137,48 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       prioritySupport: true,
     },
     bullets: [
-      "300 credits each month",
+      "350 credits each month",
       "Everything in Pro",
       "3 team seats",
       "API access",
       "Custom branded exports",
       "Priority scoring queue",
       "Priority email support",
-      "Roll over up to 600 unused credits",
+      "Roll over up to 700 unused credits",
+    ],
+  },
+  agency: {
+    id: "agency",
+    name: "Agency",
+    tagline: "For resellers and large teams",
+    priceMonthly: 249,
+    priceYearly: 249 * 10, // 2 months free
+    monthlyCredits: 1200,
+    rolloverCap: 2400,
+    vaultLimit: null,
+    features: {
+      scrapers: true,
+      voiceMining: true,
+      comparison: true,
+      watermark: false,
+      seats: 10,
+      dailyFreeScan: true,
+      apiAccess: true,
+      customBranding: true,
+      priorityQueue: true,
+      prioritySupport: true,
+      whiteLabel: true,
+      slackSupport: true,
+    },
+    bullets: [
+      "1,200 credits each month",
+      "Everything in Operator",
+      "10 team seats",
+      "White-label PDFs (your client's logo)",
+      "Client workspaces & folders",
+      "Higher API rate limits",
+      "Dedicated Slack support channel",
+      "Roll over up to 2,400 unused credits",
     ],
   },
 };
@@ -140,18 +193,24 @@ export type TopUpPack = {
   perCredit: number;
 };
 
+/**
+ * One-off credit packs for users who don't want to upgrade their tier but
+ * need extra capacity for a single project. Per-credit price decreases as
+ * pack size grows — encourages users into larger packs (better AOV) while
+ * keeping the entry pack accessible.
+ */
 export const TOPUP_PACKS: TopUpPack[] = [
-  { id: "small", credits: 25, price: 9, badge: null, perCredit: 0.36 },
-  { id: "medium", credits: 75, price: 19, badge: "save_30", perCredit: 0.25 },
-  { id: "large", credits: 200, price: 39, badge: "best_value", perCredit: 0.2 },
-  { id: "mega", credits: 500, price: 79, badge: "power_user", perCredit: 0.16 },
+  { id: "small", credits: 25, price: 15, badge: null, perCredit: 0.6 },
+  { id: "medium", credits: 100, price: 49, badge: "save_30", perCredit: 0.49 },
+  { id: "large", credits: 300, price: 129, badge: "best_value", perCredit: 0.43 },
+  { id: "mega", credits: 1000, price: 369, badge: "power_user", perCredit: 0.37 },
 ];
 
 export const TOPUP_BADGE_META: Record<
   Exclude<TopUpPackBadge, null>,
   { label: string; color: string; pulse: boolean }
 > = {
-  save_30: { label: "SAVE 30%", color: "#FF89C5", pulse: false },
+  save_30: { label: "POPULAR", color: "#FF89C5", pulse: false },
   best_value: { label: "BEST VALUE", color: "#A788FF", pulse: true },
   power_user: { label: "POWER USER", color: "#5B8DFF", pulse: false },
 };
@@ -187,7 +246,8 @@ export const STREAK_BONUS_AMOUNT = 5;
 
 /** Low-balance warning thresholds — pill pulses when balance drops below. */
 export const LOW_BALANCE_THRESHOLD = {
-  starter: 3,
+  starter: 2,
   pro: 10,
-  operator: 25,
+  operator: 30,
+  agency: 100,
 } satisfies Record<PlanTier, number>;

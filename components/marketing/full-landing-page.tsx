@@ -1417,18 +1417,18 @@ function PricingTeaser() {
         />
         <motion.div
           variants={stagger}
-          className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3"
+          className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4"
         >
           {[
             {
               name: "Starter",
               price: "€0",
               suffix: "/mo",
-              credits: "10 credits/month",
+              credits: "5 credits/month",
               features: [
-                "Free forever, no card required",
+                "Free forever, no card",
                 "Five-pillar scoring",
-                "Save up to 25 products",
+                "Save up to 10 products",
               ],
               cta: "Start free",
               ctaHref: "/auth?mode=signup",
@@ -1436,22 +1436,44 @@ function PricingTeaser() {
             },
             {
               name: "Pro",
-              price: "€19",
+              price: "€39",
               suffix: "/mo",
               credits: "100 credits/month",
-              features: ["All features unlocked", "Reddit voice mining", "No watermarks"],
+              features: [
+                "All scrapers + voice mining",
+                "Daily free scan",
+                "No watermarks",
+              ],
               cta: "Start with Pro",
               ctaHref: "/pricing?highlight=pro",
               highlight: true,
             },
             {
               name: "Operator",
-              price: "€49",
+              price: "€99",
               suffix: "/mo",
-              credits: "300 credits/month",
-              features: ["3 team seats", "API access", "Priority queue"],
+              credits: "350 credits/month",
+              features: [
+                "3 team seats",
+                "API access",
+                "Priority queue + branding",
+              ],
               cta: "Scale up",
               ctaHref: "/pricing?highlight=operator",
+              highlight: false,
+            },
+            {
+              name: "Agency",
+              price: "€249",
+              suffix: "/mo",
+              credits: "1,200 credits/month",
+              features: [
+                "10 team seats",
+                "White-label PDFs",
+                "Dedicated Slack support",
+              ],
+              cta: "Go Agency",
+              ctaHref: "/pricing?highlight=agency",
               highlight: false,
             },
           ].map((p) => (

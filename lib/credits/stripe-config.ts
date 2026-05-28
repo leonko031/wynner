@@ -23,6 +23,10 @@ export const STRIPE_PRICE_IDS: Record<PlanTier, Record<BillingInterval, string |
     monthly: process.env.STRIPE_PRICE_OPERATOR_MONTHLY,
     yearly: process.env.STRIPE_PRICE_OPERATOR_YEARLY,
   },
+  agency: {
+    monthly: process.env.STRIPE_PRICE_AGENCY_MONTHLY,
+    yearly: process.env.STRIPE_PRICE_AGENCY_YEARLY,
+  },
 };
 
 export const STRIPE_TOPUP_PRICE_IDS: Record<string, string | undefined> = {

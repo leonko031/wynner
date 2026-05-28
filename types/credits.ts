@@ -6,7 +6,7 @@
  * which we also cache on UserCreditState.balance for fast reads.
  */
 
-export type PlanTier = "starter" | "pro" | "operator";
+export type PlanTier = "starter" | "pro" | "operator" | "agency";
 
 export type CreditActionType =
   | "basic_scan"

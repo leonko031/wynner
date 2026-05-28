@@ -207,5 +207,7 @@ function ctaFor(plan: PlanTier): string {
       return "Start with Pro";
     case "operator":
       return "Scale with Operator";
+    case "agency":
+      return "Go Agency";
   }
 }
