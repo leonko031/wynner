@@ -387,11 +387,26 @@ export async function geminiWithGrounding<T>(opts: {
       });
       // ALWAYS log the actual exception to production logs (not just under
       // GEMINI_DEBUG) so we can diagnose grounding failures without needing
-      // an env var flip + redeploy cycle. Truncate to keep log volume sane.
+      // an env var flip + redeploy cycle. We log in CHUNKS because Vercel's
+      // log viewer truncates each message at ~30 chars in the table view —
+      // splitting into many short lines lets us reconstruct the full text by
+      // searching for unique substrings.
+      const keyPrefix = (process.env.GEMINI_API_KEY ?? "").slice(0, 10);
+      const keySuffix = (process.env.GEMINI_API_KEY ?? "").slice(-4);
       // eslint-disable-next-line no-console
       console.error(
-        `[geminiWithGrounding] ${label} attempt ${attempt + 1} EXCEPTION (${errName}): ${errMsg.slice(0, 500)}`,
+        `[gemwrap] ${label} a${attempt + 1} kFP=${keyPrefix}…${keySuffix} ename=${errName}`,
       );
+      // Split the actual error message into 60-char chunks so each fits the
+      // log viewer. Tag with sequence so they can be reassembled.
+      const chunks: string[] = [];
+      for (let i = 0; i < Math.min(errMsg.length, 480); i += 60) {
+        chunks.push(errMsg.slice(i, i + 60));
+      }
+      chunks.forEach((c, i) => {
+        // eslint-disable-next-line no-console
+        console.error(`[gemwrap] ${label} a${attempt + 1} m${i + 1}/${chunks.length}: ${c}`);
+      });
       // Free-tier Gemini keys cannot use Google Search grounding — every
       // grounded call returns a 400/PERMISSION_DENIED. Detect that distinct
       // failure mode and bail immediately with a useful message. Retrying or
